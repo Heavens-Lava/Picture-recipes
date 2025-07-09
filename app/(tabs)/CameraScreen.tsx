@@ -60,7 +60,7 @@ export default function CameraScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
-          Scan Your {location.charAt(0).toUpperCase() + location.slice(1)}
+          {`Scan Your ${location.charAt(0).toUpperCase() + location.slice(1)} 📸`}
         </Text>
         <Text style={styles.headerSubtitle}>
           Take a photo of your {location} to discover recipe ideas
@@ -92,7 +92,7 @@ export default function CameraScreen() {
           styles={styles}
         />
 
-        <IngredientsDisplay
+        {/* <IngredientsDisplay
           ingredients={ingredients}
           styles={styles}
         />
@@ -100,10 +100,10 @@ export default function CameraScreen() {
         <RecipesDisplay
           recipes={recipes}
           styles={styles}
-        />
+        /> */}
 
         {/* Show the button only when a picture has been taken */}
-        {lastPhoto && (
+        {/* {lastPhoto && (
           <View style={styles.navigateButtonContainer}>
             <TouchableOpacity style={styles.navigateButton} onPress={navigateToIngredients}>
               <Text style={styles.navigateButtonText}>
@@ -113,7 +113,18 @@ export default function CameraScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        )}
+        )} */}
+        <View style={styles.tipsContainer}>
+  <Text style={styles.tipsTitle}>Quick Tips</Text>
+  <Text style={styles.tipItem}>• Take a photo of your fridge or pantry to detect ingredients.</Text>
+  <Text style={styles.tipItem}>• Tap the ✨ star button to re-analyze the photo if needed.</Text>
+
+  <Text style={styles.tipItem}>• From the Ingredients screen, you can:</Text>
+  <Text style={styles.tipSubItem}>– Add recipes to your saved list</Text>
+  <Text style={styles.tipSubItem}>– Add ingredients to your grocery list</Text>
+  <Text style={styles.tipSubItem}>– Remove items already in your cart</Text>
+</View>
+
       </ScrollView>
     </SafeAreaView>
   );

@@ -185,8 +185,36 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    
   },
+  tipsContainer: {
+  marginTop: 32,
+  padding: 16,
+  backgroundColor: '#ECFDF5',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#D1FAE5',
+},
+
+tipsTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: '#047857',
+  marginBottom: 8,
+},
+
+tipItem: {
+  fontSize: 14,
+  color: '#065F46',
+  marginBottom: 4,
+},
+
+tipSubItem: {
+  fontSize: 13,
+  color: '#047857',
+  marginLeft: 12,
+  marginBottom: 3,
+},
+
   
 });
 

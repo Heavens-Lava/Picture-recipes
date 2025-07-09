@@ -7,8 +7,10 @@ import openai from '../../lib/openai';
 // Removed saveRecipeToSupabase import because we no longer save here
 import { parseAIResponse } from './AIResponseParser';
 import type { ParsedRecipe } from './AIResponseParser';
+import { useNavigation } from '@react-navigation/native'; // ← Add this line
 
 export const useCameraLogic = () => {
+    const navigation = useNavigation(); // ← Add this inside the hook
   // State management
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
@@ -31,23 +33,6 @@ export const useCameraLogic = () => {
   const toggleCameraFacing = () => {
     triggerHaptic();
     setFacing((current) => (current === 'back' ? 'front' : 'back'));
-  };
-
-  // Generate a meal image using OpenAI's DALL-E 3 model
-  const generateMealImage = async (recipeName: string): Promise<string> => {
-    try {
-      const imageResponse = await openai.images.generate({
-        model: 'dall-e-3',
-        prompt: `A delicious, realistic photo of a cooked meal: ${recipeName}`,
-        size: '1024x1024',
-        quality: 'standard',
-        n: 1,
-      });
-      return imageResponse.data[0].url;
-    } catch (err) {
-      console.error('Failed to generate meal image:', err);
-      return 'https://via.placeholder.com/512x512.png?text=Meal+Image';
-    }
   };
 
   // Analyze the taken photo using OpenAI GPT-4
@@ -128,19 +113,28 @@ Be specific about ingredient names and focus on recipes that maximize the use of
       setDetailedRecipes(parsedDetails || []);
 
       // Log parsed data for debugging
-      console.log('=== VALIDATED DATA FOR SUPABASE ===');
-      console.log('Valid ingredients (array):', validIngredients);
-      console.log('Valid recipes (array):', validRecipes);
-      console.log('✅ Parsed detailed recipes:', parsedDetails);
+      console.log('=== VALIDATED DATA ===');
+      console.log('Ingredients:', validIngredients);
+      console.log('Recipes:', validRecipes);
+      console.log('Detailed Recipes:', parsedDetails);
       console.log('=== END VALIDATED DATA ===');
 
-      // Generate a meal image based on the first suggested recipe
-      // (optional: you can use this for preview in UI)
-      const firstRecipe = validRecipes.length > 0 ? validRecipes[0] : 'AI Recipe Suggestion';
-      const recipeName = firstRecipe.replace(/^[-*\d.\s]+/, '').trim();
-      const mealImageUrl = await generateMealImage(recipeName);
+      // After alert, navigate with parsed data
+      Alert.alert('AI Response', aiText, [
+        {
+          text: 'OK',
+          onPress: () => {
+            navigation.navigate('Ingredients', {
+              ingredients: JSON.stringify(validIngredients),
+              recipes: JSON.stringify(validRecipes),
+              detailedRecipes: JSON.stringify(parsedDetails),
+              photoUri: photo.uri,
+            });
+          },
+        },
+      ]);
 
-      // NOTE: We no longer save to Supabase here — user will select recipes to save later
+
 
     } catch (err) {
       Alert.alert('Error', 'AI or Supabase request failed.');
@@ -176,10 +170,16 @@ Be specific about ingredient names and focus on recipes that maximize the use of
     setLocation((prevLocation) => (prevLocation === 'fridge' ? 'pantry' : 'fridge'));
   };
 
-  // Handle AI button action (you can customize this)
-  const handleAIAction = () => {
-    // Add your AI action logic here
-    console.log('AI action triggered');
+  // Handle AI button action (triggers picture and analysis)
+  const handleAIAction = async () => {
+    if (isAnalyzing) return;
+
+    try {
+      triggerHaptic();
+      await takePicture(); // capture + analyze
+    } catch (err) {
+      console.error('Error in AI Action:', err);
+    }
   };
 
   // Return all state and functions needed by the UI
