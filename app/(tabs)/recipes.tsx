@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   ToastAndroid,
   Platform,
-  StyleSheet
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -47,7 +46,28 @@ export default function RecipesTab() {
     if (Platform.OS === 'android') {
       ToastAndroid.show(message, ToastAndroid.SHORT);
     } else {
-      console.log("Message: ", message);
+      console.log('Message: ', message);
+    }
+  };
+
+  const updateFavoritesCount = async (userId: string) => {
+    const { count, error } = await supabase
+      .from('favorites')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error counting favorites:', error);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ favorites_count: count })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('Error updating favorites count:', updateError);
     }
   };
 
@@ -59,7 +79,7 @@ export default function RecipesTab() {
     if (error) {
       console.error('❌ Error fetching favorites:', error);
     } else {
-      setFavoriteIds(data?.map(fav => fav.recipe_id) ?? []);
+      setFavoriteIds(data?.map((fav) => fav.recipe_id) ?? []);
     }
   };
 
@@ -88,7 +108,7 @@ export default function RecipesTab() {
     if (error) {
       console.error('❌ Error fetching recipes:', error);
     } else {
-      const filtered = (data ?? []).filter(r => r.recipe_name && r.recipe_name.trim().length > 0);
+      const filtered = (data ?? []).filter((r) => r.recipe_name && r.recipe_name.trim().length > 0);
       setRecipes(filtered);
     }
 
@@ -124,21 +144,22 @@ export default function RecipesTab() {
     if (error) {
       showToast('Error adding to favorites');
     } else {
-      setFavoriteIds([...favoriteIds, recipeId]);
+      setFavoriteIds((prev) => [...prev, recipeId]);
       showToast('Added to favorites');
+      await updateFavoritesCount(userId); // ✅ Update profile count
     }
   };
 
   const filteredRecipes =
     selectedFilter === 'available'
       ? recipes.filter(
-          r =>
+          (r) =>
             r.recipe_name?.trim() &&
             r.availableIngredients != null &&
             r.totalIngredients != null &&
             r.availableIngredients === r.totalIngredients
         )
-      : recipes.filter(r => r.recipe_name?.trim());
+      : recipes.filter((r) => r.recipe_name?.trim());
 
   const renderRecipeCard = (recipe: Recipe) => {
     const isFavorited = favoriteIds.includes(recipe.id);
@@ -206,10 +227,7 @@ export default function RecipesTab() {
             </View>
           )}
 
-          <TouchableOpacity
-            style={{ marginTop: 10 }}
-            onPress={() => handleFavorite(recipe.id)}
-          >
+          <TouchableOpacity style={{ marginTop: 10 }} onPress={() => handleFavorite(recipe.id)}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Heart size={16} color="#EF4444" />
               <Text style={{ marginLeft: 6, color: '#EF4444' }}>
@@ -255,10 +273,7 @@ export default function RecipesTab() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[
-            styles.filterButton,
-            selectedFilter === 'all' && styles.filterButtonActive,
-          ]}
+          style={[styles.filterButton, selectedFilter === 'all' && styles.filterButtonActive]}
           onPress={() => setSelectedFilter('all')}
         >
           <Text
@@ -285,13 +300,11 @@ export default function RecipesTab() {
           <ActivityIndicator size="large" color="#059669" />
         </View>
       ) : filteredRecipes.length === 0 ? (
- <View style={styles.center}>
-      <MaterialCommunityIcons name="fridge-outline" size={64} color="#888" />
-      <Text style={styles.messageTitle}>No recipes found.</Text>
-      <Text style={styles.messageSubtitle}>
-        {"Try scanning\nyour fridge to add some!"}
-      </Text>
-    </View>
+        <View style={styles.center}>
+          <MaterialCommunityIcons name="fridge-outline" size={64} color="#888" />
+          <Text style={styles.messageTitle}>No recipes found.</Text>
+          <Text style={styles.messageSubtitle}>{"Try scanning\nyour fridge to add some!"}</Text>
+        </View>
       ) : (
         <ScrollView
           style={styles.scrollView}

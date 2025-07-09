@@ -32,6 +32,27 @@ export default function Favorites() {
     fetchFavorites();
   }, []);
 
+  const updateFavoritesCount = async (userId: string) => {
+    const { count, error } = await supabase
+      .from('favorites')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error counting favorites:', error);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ favorites_count: count })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('Error updating favorites count:', updateError);
+    }
+  };
+
   const fetchFavorites = async () => {
     setLoading(true);
     try {
@@ -47,7 +68,7 @@ export default function Favorites() {
 
       let { data, error } = await supabase
         .from('favorites')
-        .select(`recipe_id, recipes (id, recipe_name, title, image_url)`) 
+        .select(`recipe_id, recipes (id, recipe_name, title, image_url)`)
         .eq('user_id', session.user.id);
 
       if (error) {
@@ -88,15 +109,20 @@ export default function Favorites() {
           const {
             data: { session },
           } = await supabase.auth.getSession();
-          if (!session?.user?.id) return;
+          const userId = session?.user?.id;
+          if (!userId) return;
 
           const { error } = await supabase
             .from('favorites')
             .delete()
-            .eq('user_id', session.user.id)
+            .eq('user_id', userId)
             .eq('recipe_id', recipeId);
 
-          if (error) console.error('Error removing favorite:', error);
+          if (error) {
+            console.error('Error removing favorite:', error);
+          } else {
+            await updateFavoritesCount(userId); // ✅ update count after delete
+          }
         } catch (err) {
           console.error('Unexpected error unfavoriting:', err);
         }
@@ -147,13 +173,23 @@ export default function Favorites() {
     );
   }
 
-  if (favorites.length === 0) {
-    return (
-      <SafeAreaView style={styles.emptyContainer}>
+ if (favorites.length === 0) {
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <X size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Favorites</Text>
+        <View style={{ width: 24 }} />
+      </View>
+      <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>No favorites added yet.</Text>
-      </SafeAreaView>
-    );
-  }
+      </View>
+    </SafeAreaView>
+  );
+}
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -174,7 +210,9 @@ export default function Favorites() {
 
       {recentlyRemoved && (
         <TouchableOpacity style={styles.undoBar} onPress={handleUndo}>
-          <Text style={styles.undoText}>Undo remove "{recentlyRemoved.title || recentlyRemoved.recipe_name}"</Text>
+          <Text style={styles.undoText}>
+            Undo remove "{recentlyRemoved.title || recentlyRemoved.recipe_name}"
+          </Text>
         </TouchableOpacity>
       )}
     </SafeAreaView>

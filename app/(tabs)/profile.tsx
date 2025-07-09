@@ -172,25 +172,35 @@ export default function ProfileTab() {
     }
   };
 
-  const loadUserStats = async (userId: string) => {
-    try {
-      console.log('Loading stats for user:', userId);
-      
-      // In a real app, you would fetch actual stats from your database
-      // For now, we'll use mock data that updates based on user activity
-      const mockStats = {
-        photos_taken: Math.floor(Math.random() * 50) + 10,
-        recipes_tried: Math.floor(Math.random() * 30) + 5,
-        lists_created: Math.floor(Math.random() * 15) + 3,
-        favorites_count: Math.floor(Math.random() * 20) + 2,
-      };
-      
-      setUserStats(mockStats);
-      console.log('Stats loaded:', mockStats);
-    } catch (error) {
-      console.error('Error loading user stats:', error);
+const loadUserStats = async (userId: string) => {
+  try {
+    console.log('Loading stats for user:', userId);
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('photos_taken, recipes_tried, lists_created, favorites_count')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error loading stats:', error);
+      return;
     }
-  };
+
+    const stats = {
+      photos_taken: data.photos_taken ?? 0,
+      recipes_tried: data.recipes_tried ?? 0,
+      lists_created: data.lists_created ?? 0,
+      favorites_count: data.favorites_count ?? 0,
+    };
+
+    setUserStats(stats);
+    console.log('Stats loaded:', stats);
+  } catch (error) {
+    console.error('Unexpected error loading stats:', error);
+  }
+};
+
 
   const handleRefresh = async () => {
     setRefreshing(true);

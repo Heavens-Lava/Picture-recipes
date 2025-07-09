@@ -8,6 +8,10 @@ import openai from '../../lib/openai';
 import { parseAIResponse } from './AIResponseParser';
 import type { ParsedRecipe } from './AIResponseParser';
 import { useNavigation } from '@react-navigation/native'; // ← Add this line
+import { incrementPhotosTaken } from '../../lib/userStats';
+import { supabase } from '../../lib/supabase'; // Make sure this is imported too
+
+
 
 export const useCameraLogic = () => {
     const navigation = useNavigation(); // ← Add this inside the hook
@@ -41,6 +45,16 @@ export const useCameraLogic = () => {
 
     try {
       const base64Image = `data:image/jpeg;base64,${photo.base64}`;
+
+      
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    if (userId) {
+      await incrementPhotosTaken(userId); // ← track activity
+    }
+
+
 
       const response = await openai.chat.completions.create({
         model: 'gpt-4o',
