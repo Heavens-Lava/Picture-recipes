@@ -8,7 +8,9 @@ import {
   ActivityIndicator,
   ToastAndroid,
   Platform,
+  StyleSheet
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Clock, Users, Flame, Star, RefreshCw, Heart } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
@@ -283,9 +285,13 @@ export default function RecipesTab() {
           <ActivityIndicator size="large" color="#059669" />
         </View>
       ) : filteredRecipes.length === 0 ? (
-        <View style={styles.center}>
-          <Text>No recipes found. Try scanning your fridge to add some!</Text>
-        </View>
+ <View style={styles.center}>
+      <MaterialCommunityIcons name="fridge-outline" size={64} color="#888" />
+      <Text style={styles.messageTitle}>No recipes found.</Text>
+      <Text style={styles.messageSubtitle}>
+        {"Try scanning\nyour fridge to add some!"}
+      </Text>
+    </View>
       ) : (
         <ScrollView
           style={styles.scrollView}

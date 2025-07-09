@@ -79,10 +79,24 @@ export const styles = StyleSheet.create({
   },
   
   // Centering container for loading states and empty messages
-  center: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+ center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  messageTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 12,
+    color: '#444',
+  },
+  messageSubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 6,
+    lineHeight: 22,
   },
   
   // Recipe card styling - white background with shadow for depth

@@ -118,7 +118,7 @@ export default function Signup() {
         try {
           await insertProfile();
           // Redirect to the account created success page
-          router.replace('/AccountCreatedSuccessfully');
+          router.replace('./AccountCreatedSuccessfully');
         } catch (profileError) {
           console.error('❌ All profile insert attempts failed:', profileError);
           
@@ -129,7 +129,7 @@ export default function Signup() {
             [
               { 
                 text: 'OK', 
-                onPress: () => router.replace('/AccountCreatedSuccessfully')
+                onPress: () => router.replace('./AccountCreatedSuccessfully')
               }
             ]
           );
@@ -140,7 +140,7 @@ export default function Signup() {
           'Account Created',
           'Your account was created but there was an issue signing you in. Please try logging in.',
           [
-            { text: 'OK', onPress: () => router.replace('/login') },
+            { text: 'OK', onPress: () => router.replace('./login') },
           ]
         );
       }
@@ -236,7 +236,7 @@ export default function Signup() {
             <Text style={styles.buttonText}>{loading ? 'Please wait...' : 'Create Account'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.replace('/Login')} style={styles.switchLink}>
+          <TouchableOpacity onPress={() => router.replace('./Login')} style={styles.switchLink}>
             <Text style={styles.switchText}>
               Already have an account? <Text style={styles.switchTextHighlight}>Sign in</Text>
             </Text>
