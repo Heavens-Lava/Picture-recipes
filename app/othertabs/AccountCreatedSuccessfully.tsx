@@ -1,11 +1,41 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 import LottieView from 'lottie-react-native';
+import { Audio } from 'expo-av';
+
 
 export default function AccountCreatedScreen() {
+  
+  const sound = useRef<Audio.Sound | null>(null);
+
+  useEffect(() => {
+    // Load and play sound on mount
+    const playSound = async () => {
+      try {
+        const { sound: playbackObject } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/authenticationsuccess.mp3')
+        );
+        sound.current = playbackObject;
+        await sound.current.playAsync();
+      } catch (error) {
+        console.error('Error loading or playing sound:', error);
+      }
+    };
+
+    playSound();
+
+    return () => {
+      // Unload sound on unmount to free resources
+      if (sound.current) {
+        sound.current.unloadAsync();
+      }
+    };
+  }, []);
+
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.iconContainer}>
@@ -61,7 +91,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     marginBottom: 36,
-    lineHeight: 24,
+    lineHeight: 26,
   },
   button: {
     backgroundColor: '#059669',

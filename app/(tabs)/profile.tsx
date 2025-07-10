@@ -72,10 +72,33 @@ export default function ProfileTab() {
   });
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [groceryItemCount, setGroceryItemCount] = useState(0);
+
+const fetchGroceryItemCount = async () => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.user?.id) return;
+
+  const { count, error } = await supabase
+    .from('grocery')
+    .select('*', { count: 'exact', head: true }) // count only
+    .eq('user_id', session.user.id)
+    .eq('in_cart', false);  // add this filter
+
+  if (error) {
+    console.error('❌ Error fetching grocery item count:', error);
+  } else {
+    setGroceryItemCount(count || 0);
+  }
+};
+
+  
 
   useEffect(() => {
     checkAuthStatus();
-
+    fetchGroceryItemCount();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.id);
       
@@ -222,7 +245,7 @@ const loadUserStats = async (userId: string) => {
   };
 
   const handleSignup = () => {
-    router.push('/Signup');
+    router.push('./othertabs/Signup');
   };
 
   const handleEditProfile = () => {
@@ -282,8 +305,8 @@ const loadUserStats = async (userId: string) => {
     },
     {
       icon: <ShoppingCart size={24} color="#F59E0B" />,
-      label: 'Lists Created',
-      value: isAuthenticated ? userStats.lists_created.toString() : '0',
+      label: 'Items in Grocery List',
+      value: isAuthenticated ? groceryItemCount.toString() : '0',
       color: '#F59E0B',
     },
     {

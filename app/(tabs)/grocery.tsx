@@ -16,8 +16,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useRequireAuth } from '../hooks/useRequireAuth';
-  import { useFocusEffect } from '@react-navigation/native';
-
+import { useFocusEffect } from '@react-navigation/native';
+import { Audio } from 'expo-av';
 
 interface GroceryItem {
   id: string;
@@ -51,9 +51,8 @@ export default function GroceryTab() {
   const processingItems = useRef(new Set<string>());
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const removedToastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-
-
+  
+    const soundRef = useRef<Audio.Sound | null>(null);
 
 useFocusEffect(
   useCallback(() => {
@@ -63,6 +62,29 @@ useFocusEffect(
   
   // Handle new ingredients from the ingredients screen
 useEffect(() => {
+  async function prepareAudio() {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/cooking-bell.wav') // update path if needed
+      );
+
+      soundRef.current = sound;
+
+    } catch (error) {
+      console.error('Audio setup or loading failed:', error);
+    }
+  }
+
+  prepareAudio();
+
   if (newIngredients) {
     try {
       const parsedIngredients = JSON.parse(newIngredients as string);
@@ -71,7 +93,15 @@ useEffect(() => {
       console.error('Error parsing new ingredients:', error);
     }
   }
+
+  return () => {
+    if (soundRef.current) {
+      soundRef.current.unloadAsync();
+      soundRef.current = null;
+    }
+  };
 }, [newIngredients]);
+
 
 
 
@@ -99,7 +129,7 @@ const fetchGroceryItemsFromDatabase = async () => {
       name: item.ingredient_name,
       category: categorizeIngredient(item.ingredient_name),
       needed: true,
-      inCart: false,
+      inCart: item.in_cart || false,
     }));
 
     setItems(formattedItems);
@@ -376,43 +406,60 @@ const addManualItem = async () => {
   }, [showRemovedToast, removedToastOpacity, removedToastTranslateY]);
 
   // Optimized toggleItemCart function with debouncing
-  const toggleItemCart = useCallback((id: string) => {
-    // Prevent rapid successive calls
-    if (processingItems.current.has(id)) {
-      return;
-    }
+const toggleItemCart = useCallback(async (id: string) => {
+  if (processingItems.current.has(id)) return;
+  processingItems.current.add(id);
 
-    processingItems.current.add(id);
-    
-    // Use functional update to avoid stale closure issues
-    setItems(prevItems => {
-      const item = prevItems.find(item => item.id === id);
-      if (!item) {
-        processingItems.current.delete(id);
-        return prevItems;
-      }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.log("User not logged in");
+    processingItems.current.delete(id);
+    return;
+  }
 
-      // Trigger toast animation based on the new state
-      if (!item.inCart) {
-        // Will be adding to cart
-        showAddedToCartToast(item.name);
-      } else {
-        // Will be removing from cart
-        showRemovedFromCartToast(item.name);
-      }
+  // Find the item first
+  const item = items.find(item => item.id === id);
+  if (!item) {
+    processingItems.current.delete(id);
+    return;
+  }
 
-      const updatedItems = prevItems.map(prevItem =>
-        prevItem.id === id ? { ...prevItem, inCart: !prevItem.inCart } : prevItem
-      );
+  const newInCart = !item.inCart;
 
-      // Clean up processing flag after a short delay
-      setTimeout(() => {
-        processingItems.current.delete(id);
-      }, 300);
+  // Update in local state immediately for UI responsiveness
+  setItems(prevItems =>
+    prevItems.map(prevItem =>
+      prevItem.id === id ? { ...prevItem, inCart: newInCart } : prevItem
+    )
+  );
 
-      return updatedItems;
-    });
-  }, [showAddedToCartToast, showRemovedFromCartToast]);
+  // Show toast
+  if (newInCart) {
+     playSound();
+    showAddedToCartToast(item.name);
+     
+  } else {
+    showRemovedFromCartToast(item.name);
+  }
+
+  // Update in Supabase
+  const { error } = await supabase
+    .from('grocery')
+    .update({ in_cart: newInCart })
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('❌ Error updating cart status in database:', error.message);
+    // Optionally roll back local state here
+  }
+
+  // Clean up
+  setTimeout(() => {
+    processingItems.current.delete(id);
+  }, 300);
+}, [items, showAddedToCartToast, showRemovedFromCartToast]);
+
 
 const removeItem = async (id: string) => {
   const { data: { user } } = await supabase.auth.getUser();
@@ -437,6 +484,17 @@ const removeItem = async (id: string) => {
 
   // Remove from local state
   setItems(prevItems => prevItems.filter(item => item.id !== id));
+};
+
+
+const playSound = async () => {
+  if (soundRef.current) {
+    try {
+      await soundRef.current.replayAsync(); // plays from start
+    } catch (error) {
+      console.error('Error playing sound:', error);
+    }
+  }
 };
 
 
