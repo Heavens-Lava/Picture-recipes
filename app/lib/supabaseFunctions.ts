@@ -228,3 +228,45 @@ const createNotification = async (userId: string, title: string, message: string
     console.error('❌ Unexpected error creating notification:', err);
   }
 };
+// Fetch current user profile and check premium status
+export const getUserProfile = async () => {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error('❌ Error fetching user:', userError?.message);
+    return null;
+  }
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('id, has_premium')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    console.error('❌ Error fetching profile:', error.message);
+    return null;
+  }
+
+  return profile;
+};
+
+// Count the number of recipes the user has saved
+export const getUserRecipeCount = async () => {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error('❌ Error fetching user:', userError?.message);
+    return 0;
+  }
+
+  const { count, error } = await supabase
+    .from('recipes')
+    .select('id', { count: 'exact', head: true }) // count mode without fetching full rows
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('❌ Error getting recipe count:', error.message);
+    return 0;
+  }
+
+  return count ?? 0;
+};

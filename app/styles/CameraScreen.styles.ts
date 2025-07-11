@@ -1,5 +1,8 @@
 // CameraScreen.styles.ts
 import { StyleSheet } from 'react-native';
+import { Dimensions } from 'react-native';
+const { width, height } = Dimensions.get('window');
+
 
 const styles = StyleSheet.create({
   container: { 
@@ -12,7 +15,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingVertical: 3,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
@@ -21,14 +24,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   headerSubtitle: {
     fontSize: 16,
     color: '#6B7280',
   },
   cameraContainer: {
-    height: 300,  // Fixed height for camera preview (adjust as needed)
+    height: height * 0.55,  // Fixed height for camera preview (adjust as needed)
     margin: 16,
     borderRadius: 16,
     overflow: 'hidden',
@@ -66,53 +69,62 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 24,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  flipButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#374151',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  captureButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 4,
-    borderColor: '#059669',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  captureButtonInner: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#F0FDF4',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  captureButtonDisabled: {
-    opacity: 0.6,
-  },
-  aiButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#7C3AED',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+controls: {
+  flexDirection: 'row',
+  justifyContent: 'space-evenly', // evenly space buttons
+  alignItems: 'center',
+  paddingHorizontal: 32,
+  paddingVertical: 24,
+  // Remove white background so buttons are directly over camera
+  backgroundColor: 'transparent',
+  borderTopWidth: 0, // remove border to keep clean overlay
+},
+
+flipButton: {
+  width: 56,
+  height: 56,
+  borderRadius: 28,
+  backgroundColor: 'rgba(55,65,81,0.6)', // semi-transparent dark gray
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginHorizontal: 8, // add horizontal spacing
+},
+
+captureButton: {
+  width: 80,
+  height: 80,
+  borderRadius: 40,
+  backgroundColor: 'rgba(255,255,255,0.6)', // semi-transparent white
+  borderWidth: 4,
+  borderColor: '#059669',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginHorizontal: 8,
+},
+
+captureButtonInner: {
+  width: 64,
+  height: 64,
+  borderRadius: 32,
+  backgroundColor: 'rgba(240,253,244,0.8)', // slightly transparent lighter greenish white
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+captureButtonDisabled: {
+  opacity: 0.6,
+},
+
+aiButton: {
+  width: 56,
+  height: 56,
+  borderRadius: 28,
+  backgroundColor: 'rgba(124,58,237,0.7)', // semi-transparent purple
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginHorizontal: 8,
+},
+
   locationContainer: {
     padding: 16,
     backgroundColor: '#FFFFFF',
@@ -214,6 +226,30 @@ tipSubItem: {
   marginLeft: 12,
   marginBottom: 3,
 },
+cameraWithControlsContainer: {
+  flex: 1,                        // fill all available vertical space
+  margin: 0,                      // remove extra outer spacing
+  borderRadius: 0,                // no rounded corners
+  overflow: 'hidden',
+  backgroundColor: 'transparent', // was black before
+  position: 'relative',
+},
+
+
+cameraControlsOverlay: {
+  position: 'absolute',
+  bottom: 24,
+  left: 0,
+  right: 0,
+  flexDirection: 'row',
+  justifyContent: 'space-evenly',
+  alignItems: 'center',
+  paddingHorizontal: 16,
+  // No backgroundColor here for transparent overlay
+},
+
+
+
 
   
 });

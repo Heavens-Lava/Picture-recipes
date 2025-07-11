@@ -28,6 +28,7 @@ import {
   UserPlus,
   LogOut,
   Edit3,
+  CreditCard, // ✅ add this
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { router } from 'expo-router';
@@ -348,6 +349,12 @@ const getMenuOptions = (): MenuOption[] => {
         }
       },
     },
+    {
+  icon: <CreditCard size={24} color="#10B981" />,
+  label: 'Upgrade',
+  onPress: () => router.push('/othertabs/FullVersionScreen'),
+},
+
     {
       icon: <Star size={24} color="#6B7280" />,
       label: 'Rate App',

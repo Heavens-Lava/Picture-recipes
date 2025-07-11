@@ -7,6 +7,5 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true, // Ensure it works in the Expo environment
 });
 
-console.log('OpenAI Key:', Constants.expoConfig.extra.OPENAI_API_KEY);
 
 export default openai;

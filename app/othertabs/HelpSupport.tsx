@@ -14,35 +14,47 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 
+// Import your Supabase client (adjust path to your actual client)
+import { supabase } from '../lib/supabase'; // Make sure this points to where you initialize supabase client
+
+
 export default function HelpSupport() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!name || !email || !message) {
-      Alert.alert('Please fill in all fields.');
-      return;
+
+const handleSubmit = async () => {
+  if (!name || !email || !message) {
+    Alert.alert('Please fill in all fields.');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const { data, error } = await supabase
+      .from('support_requests')  // your table name
+      .insert([{ name, email, message, created_at: new Date() }]);
+
+    if (error) {
+      throw error;
     }
 
-    setLoading(true);
+    Alert.alert('Support Request Sent', 'Thanks for sending us your message, we will review it shortly.');
+    setName('');
+    setEmail('');
+    setMessage('');
+    router.back();
+  } catch (error) {
+    Alert.alert('Error', 'Failed to submit support request.');
+    console.error('Error inserting support request:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
-    try {
-      // In real implementation, you would send this data to a backend or support email
-      console.log('Submitting support request:', { name, email, message });
-
-      Alert.alert('Support Request Sent', 'We will get back to you shortly.');
-      setName('');
-      setEmail('');
-      setMessage('');
-      router.back();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to submit support request.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -72,6 +84,7 @@ export default function HelpSupport() {
             placeholder="Your Name"
             value={name}
             onChangeText={setName}
+              placeholderTextColor="#9CA3AF" // Light gray placeholder
           />
 
           <TextInput
@@ -80,6 +93,7 @@ export default function HelpSupport() {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
+                    placeholderTextColor="#9CA3AF" // Light gray placeholder
           />
 
           <TextInput
@@ -89,6 +103,7 @@ export default function HelpSupport() {
             onChangeText={setMessage}
             multiline
             numberOfLines={6}
+                    placeholderTextColor="#9CA3AF" // Light gray placeholder
           />
 
           <TouchableOpacity
@@ -100,6 +115,11 @@ export default function HelpSupport() {
               {loading ? 'Submitting...' : 'Submit'}
             </Text>
           </TouchableOpacity>
+<Text style={styles.footerNote}>
+  You can also use this form to send feedback, feature requests, or app improvement ideas! You can also tell me how cool this app is! 😄
+</Text>
+
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -134,20 +154,21 @@ const styles = StyleSheet.create({
   },
   helpMessage: {
     fontSize: 16,
-    color: '#4B5563', // gray-600
+    color: '#061933',
     marginBottom: 24,
     textAlign: 'center',
     lineHeight: 22,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#243144',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 16,
+    color: '#111827',
   },
   textArea: {
     height: 120,
@@ -164,4 +185,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  footerNote: {
+  fontSize: 14,
+  color: '#6B7280', // gray-500
+  marginTop: 16,
+  textAlign: 'center',
+  lineHeight: 20,
+},
+
 });

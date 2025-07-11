@@ -9,6 +9,8 @@ import {
 import openai from '../../lib/openai';
 import { generateRecipeImage } from '../../lib/generateImage';
 import type { ParsedRecipe } from '../CameraScreenComponents/AIResponseParser';
+import { getUserProfile, getUserRecipeCount } from '../../lib/supabaseFunctions';
+
 
 interface UseIngredientsLogicProps {
   detailedRecipes?: ParsedRecipe[];
@@ -84,64 +86,94 @@ export const useIngredientsLogic = ({ detailedRecipes = [] }: UseIngredientsLogi
    * Adds a recipe to Supabase with AI-generated instructions and image.
    */
   const handleAddRecipe = async (recipe: string, allFridgeIngredients: string[]) => {
-    if (isSaving) return;
+  if (isSaving) return;
 
-    setIsSaving(true);
-    try {
-      const detailedRecipe = detailedRecipes.find(
-        (d) => d.name.toLowerCase() === recipe.toLowerCase()
-      );
+  setIsSaving(true);
+  try {
+    // 🔒 Check user profile and recipe count
+    const profile = await getUserProfile();
+    const recipeCount = await getUserRecipeCount();
 
-      const relevantIngredients = detailedRecipe?.availableIngredients?.length
-        ? detailedRecipe.availableIngredients
-        : extractRecipeIngredients(recipe, allFridgeIngredients);
-
-      const { recipeName, description } = parseRecipeString(recipe);
-
-      const instructions = await generateInstructions(recipeName, relevantIngredients);
-
-      let imageUrl = detailedRecipe?.image || null;
-      if (!imageUrl) {
-        imageUrl = await generateRecipeImage(recipeName);
-      }
-
-      const recipeData = {
-        title: recipeName,
-        recipe_name: recipeName,
-        ingredients: relevantIngredients,
-        instructions,
-        image: imageUrl,
-        cookTime: '15-30 min',
-        servings: 2,
-        difficulty: 'Easy',
-        rating: 4,
-        availableIngredients: relevantIngredients.length,
-        totalIngredients: relevantIngredients.length,
-        created_at: new Date().toISOString(),
-      };
-
-      const result = await saveRecipeToSupabase(recipeData);
-
-      if (result) {
-        animateRecipeRemoval(recipe);
-        Alert.alert(
-          'Success',
-          `Recipe "${recipeName}" added to your recipes!\n\nUsing ${relevantIngredients.length} ingredients from your fridge.`,
-          [
-            { text: 'View Recipes', onPress: () => router.push('/recipes') },
-            { text: 'Stay Here', style: 'cancel' },
-          ]
-        );
-      } else {
-        Alert.alert('Info', `Recipe "${recipeName}" may already exist or could not be saved.`);
-      }
-    } catch (error) {
-      console.error('Error saving recipe:', error);
-      Alert.alert('Error', 'Failed to save the recipe. Please try again.');
-    } finally {
+    if (!profile) {
+      Alert.alert('Error', 'Could not verify user profile.');
       setIsSaving(false);
+      return;
     }
-  };
+
+    const isPremium = profile.has_premium;
+
+    // 🚧 Trial limit: 5 recipes max for free users
+    if (!isPremium && recipeCount >= 5) {
+      Alert.alert(
+        'Upgrade Required',
+        'You’ve reached your 5 recipe trial limit. Upgrade to unlock unlimited recipes!',
+        [
+          {
+            text: 'Upgrade',
+            onPress: () => router.push('/PaywallScreen'), // 👈 Update route if needed
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      setIsSaving(false);
+      return;
+    }
+
+    // ✅ Proceed with adding recipe
+    const detailedRecipe = detailedRecipes.find(
+      (d) => d.name.toLowerCase() === recipe.toLowerCase()
+    );
+
+    const relevantIngredients = detailedRecipe?.availableIngredients?.length
+      ? detailedRecipe.availableIngredients
+      : extractRecipeIngredients(recipe, allFridgeIngredients);
+
+    const { recipeName } = parseRecipeString(recipe);
+    const instructions = await generateInstructions(recipeName, relevantIngredients);
+
+    let imageUrl = detailedRecipe?.image || null;
+    if (!imageUrl) {
+      imageUrl = await generateRecipeImage(recipeName);
+    }
+
+    const recipeData = {
+      title: recipeName,
+      recipe_name: recipeName,
+      ingredients: relevantIngredients,
+      instructions,
+      image: imageUrl,
+      cookTime: '15-30 min',
+      servings: 2,
+      difficulty: 'Easy',
+      rating: 4,
+      availableIngredients: relevantIngredients.length,
+      totalIngredients: relevantIngredients.length,
+      created_at: new Date().toISOString(),
+    };
+
+    const result = await saveRecipeToSupabase(recipeData);
+
+    if (result) {
+      animateRecipeRemoval(recipe);
+      Alert.alert(
+        'Success',
+        `Recipe "${recipeName}" added to your recipes!\n\nUsing ${relevantIngredients.length} ingredients from your fridge.`,
+        [
+          { text: 'View Recipes', onPress: () => router.push('/recipes') },
+          { text: 'Stay Here', style: 'cancel' },
+        ]
+      );
+    } else {
+      Alert.alert('Info', `Recipe "${recipeName}" may already exist or could not be saved.`);
+    }
+  } catch (error) {
+    console.error('Error saving recipe:', error);
+    Alert.alert('Error', 'Failed to save the recipe. Please try again.');
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   return {
     isSaving,

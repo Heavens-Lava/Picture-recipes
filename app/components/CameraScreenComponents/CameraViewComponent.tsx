@@ -1,6 +1,6 @@
 // CameraViewComponent.tsx
 import React from 'react';
-import { View, Text, ActivityIndicator, Button } from 'react-native';
+import { View, Text, ActivityIndicator, Button, StyleSheet } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import FastImage from 'expo-fast-image';
 
@@ -33,25 +33,31 @@ const CameraViewComponent: React.FC<CameraViewComponentProps> = ({
   }
 
   return (
-    <View style={styles.cameraContainer}>
-      <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
-      {lastPhoto && (
-        <View style={styles.lastPhotoContainer}>
-          <FastImage
-            source={{ uri: lastPhoto }}
-            style={styles.lastPhoto}
-            cacheKey="fridge-preview"
-          />
-          {isAnalyzing && (
-            <View style={styles.analyzingOverlay}>
-              <ActivityIndicator size="large" color="#FFFFFF" />
-              <Text style={styles.analyzingText}>Analyzing...</Text>
-            </View>
-          )}
-        </View>
-      )}
-    </View>
-  );
+
+  <View style={[styles.cameraContainer, { position: 'relative' }]}>
+    <CameraView
+      ref={cameraRef}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      facing={facing}
+    />
+    {lastPhoto && (
+      <View style={styles.lastPhotoContainer}>
+        <FastImage
+          source={{ uri: lastPhoto }}
+          style={styles.lastPhoto}
+          cacheKey="fridge-preview"
+        />
+        {isAnalyzing && (
+          <View style={styles.analyzingOverlay}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.analyzingText}>Analyzing...</Text>
+          </View>
+        )}
+      </View>
+    )}
+  </View>
+);
+
 };
 
 export default CameraViewComponent;

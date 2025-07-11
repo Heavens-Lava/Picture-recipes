@@ -1,30 +1,24 @@
-// CameraScreen.tsx - UI Component
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native'; // Import navigation hook
+import { useNavigation } from '@react-navigation/native';
 import styles from '../styles/CameraScreen.styles';
 
-// Import components
 import CameraControls from '../components/CameraScreenComponents/CameraControls';
 import CameraViewComponent from '../components/CameraScreenComponents/CameraViewComponent';
-import IngredientsDisplay from '../components/CameraScreenComponents/IngredientsDisplay';
-import RecipesDisplay from '../components/CameraScreenComponents/RecipesDisplay';
 import LocationToggle from '../components/CameraScreenComponents/LocationToggle';
 import { useRequireAuth } from '../hooks/useRequireAuth';
-// Import the custom hook
 import { useCameraLogic } from '../components/CameraScreenComponents/useCameraLogic';
 
 export default function CameraScreen() {
-    useRequireAuth(); // Ensure the user is authenticated before accessing this screen
-  // Get all state and functions from the custom hook
+  useRequireAuth();
   const {
     facing,
     lastPhoto,
     isAnalyzing,
     ingredients,
     recipes,
-     detailedRecipes,
+    detailedRecipes,
     location,
     cameraRef,
     toggleCameraFacing,
@@ -33,26 +27,21 @@ export default function CameraScreen() {
     handleAIAction,
   } = useCameraLogic();
 
-  const navigation = useNavigation(); // Initialize navigation hook
+  const navigation = useNavigation();
 
-  // Handle button press to navigate to Ingredients screen
   const navigateToIngredients = () => {
-    // Log the current state for debugging
     console.log('When navigating to ingredients: Ingredients array:', ingredients);
     console.log('When navigating to ingredients: Recipes array:', recipes);
     console.log('When navigating to ingredients: Last photo:', lastPhoto);
-    
-    // Convert arrays to JSON strings for proper passing through navigation
+
     const ingredientsParam = JSON.stringify(ingredients);
     const recipesParam = JSON.stringify(recipes);
-  
 
-    
     navigation.navigate('Ingredients', {
       ingredients: ingredientsParam,
       recipes: recipesParam,
       photoUri: lastPhoto?.uri || undefined,
-      detailedRecipes: JSON.stringify(detailedRecipes), // ✅ Pass it as a JSON string
+      detailedRecipes: JSON.stringify(detailedRecipes),
     });
   };
 
@@ -67,24 +56,27 @@ export default function CameraScreen() {
         </Text>
       </View>
 
-      {/* ScrollView is a scrollable container allowing the user to scroll down*/}
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        
-        <CameraViewComponent
-          cameraRef={cameraRef}
-          facing={facing}
-          lastPhoto={lastPhoto}
-          isAnalyzing={isAnalyzing}
-          styles={styles}
-        />
-
-        <CameraControls
-          isAnalyzing={isAnalyzing}
-          onFlipCamera={toggleCameraFacing}
-          onTakePicture={takePicture}
-          onAIAction={handleAIAction}
-          styles={styles}
-        />
+        {/* New wrapper for camera + buttons */}
+        <View style={styles.cameraWithControlsContainer}>
+          <CameraViewComponent
+            cameraRef={cameraRef}
+            facing={facing}
+            lastPhoto={lastPhoto}
+            isAnalyzing={isAnalyzing}
+            styles={styles}
+          />
+          {/* Overlay controls on top of camera */}
+          <View style={styles.cameraControlsOverlay}>
+            <CameraControls
+              isAnalyzing={isAnalyzing}
+              onFlipCamera={toggleCameraFacing}
+              onTakePicture={takePicture}
+              onAIAction={handleAIAction}
+              styles={styles}
+            />
+          </View>
+        </View>
 
         <LocationToggle
           location={location}
@@ -92,39 +84,15 @@ export default function CameraScreen() {
           styles={styles}
         />
 
-        {/* <IngredientsDisplay
-          ingredients={ingredients}
-          styles={styles}
-        />
-
-        <RecipesDisplay
-          recipes={recipes}
-          styles={styles}
-        /> */}
-
-        {/* Show the button only when a picture has been taken */}
-        {/* {lastPhoto && (
-          <View style={styles.navigateButtonContainer}>
-            <TouchableOpacity style={styles.navigateButton} onPress={navigateToIngredients}>
-              <Text style={styles.navigateButtonText}>
-                Go to Ingredients 
-                {ingredients?.length > 0 && ` (${ingredients.length} ingredients)`}
-                {recipes?.length > 0 && ` (${recipes.length} recipes)`}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )} */}
         <View style={styles.tipsContainer}>
-  <Text style={styles.tipsTitle}>Quick Tips</Text>
-  <Text style={styles.tipItem}>• Take a photo of your fridge or pantry to detect ingredients.</Text>
-  <Text style={styles.tipItem}>• Tap the ✨ star button to re-analyze the photo if needed.</Text>
-
-  <Text style={styles.tipItem}>• From the Ingredients screen, you can:</Text>
-  <Text style={styles.tipSubItem}>– Add recipes to your saved list</Text>
-  <Text style={styles.tipSubItem}>– Add ingredients to your grocery list</Text>
-  <Text style={styles.tipSubItem}>– Remove items already in your cart</Text>
-</View>
-
+          <Text style={styles.tipsTitle}>Quick Tips</Text>
+          <Text style={styles.tipItem}>• Take a photo of your fridge or pantry to detect ingredients.</Text>
+          <Text style={styles.tipItem}>• Tap the ✨ star button to re-analyze the photo if needed.</Text>
+          <Text style={styles.tipItem}>• From the Ingredients screen, you can:</Text>
+          <Text style={styles.tipSubItem}>– Add recipes to your saved list</Text>
+          <Text style={styles.tipSubItem}>– Add ingredients to your grocery list</Text>
+          <Text style={styles.tipSubItem}>– Remove items already in your cart</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
