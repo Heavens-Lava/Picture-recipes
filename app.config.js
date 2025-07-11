@@ -6,7 +6,7 @@ export default {
     slug: 'picture-recipes-app',
     version: '1.0.1',
     orientation: 'portrait',
-    icon: './assets/images/icon.png',
+    icon: './assets/icons/picture-recipes-icon.png',
     scheme: 'myapp',
     userInterfaceStyle: 'automatic',
     android: {

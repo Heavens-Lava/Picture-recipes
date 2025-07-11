@@ -31,59 +31,56 @@ export default function FullVersionScreen() {
     fetchStatus();
   }, []);
 
-  const handleUpgrade = async () => {
-    try {
-      setCheckoutLoading(true);
-      // Removed unused: const user = supabase.auth.getUser();
+ const handleUpgrade = async () => {
+  try {
+    setCheckoutLoading(true);
 
-      const session = await supabase.auth.getSession();
-
-      if (!session.data.session?.user) {
-        Alert.alert('Not logged in', 'Please sign in to upgrade.');
-        setCheckoutLoading(false);
-        return;
-      }
-
-      const userId = session.data.session.user.id;
-
-      // Replace with your actual price_id from Stripe Dashboard
-      const priceId = 'price_1RjR3DHXzuAr8BXH3KdsHIOE';
-
-      // Call Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        method: 'POST',
-        body: JSON.stringify({ user_id: userId, price_id: priceId }),
-      });
-
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session) {
+      Alert.alert('Not logged in', 'Please sign in to upgrade.');
       setCheckoutLoading(false);
-
-      if (error) {
-        console.error('Checkout function error:', error);
-        Alert.alert('Error', 'Failed to create checkout session.');
-        return;
-      }
-
-      // Decode Uint8Array response to string
-      const text = new TextDecoder().decode(data);
-      const json = JSON.parse(text);
-
-      if (json.error) {
-        Alert.alert('Error', json.error);
-        return;
-      }
-
-      if (json.url) {
-        // Open the Stripe checkout page in the browser
-        await Linking.openURL(json.url);
-      } else {
-        Alert.alert('Error', 'No checkout URL returned.');
-      }
-    } catch (err) {
-      setCheckoutLoading(false);
-      console.error('Upgrade error:', err);
-      Alert.alert('Error', 'An unexpected error occurred.');
+      return;
     }
-  };
+
+    const accessToken = sessionData.session.access_token;
+    const userId = sessionData.session.user.id;
+    const priceId = 'price_1RjR3DHXzuAr8BXH3KdsHIOE'; // Your Stripe price ID
+
+    const response = await fetch(
+      'https://flqsdjtfkgycvssdbegd.supabase.co/functions/v1/create-checkout-session',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ user_id: userId, price_id: priceId }),
+      }
+    );
+
+    const result = await response.json();
+
+    setCheckoutLoading(false);
+
+    if (!response.ok || result.error) {
+      console.error('Stripe Checkout error:', result);
+      Alert.alert('Error', result.error || 'Could not create session');
+      return;
+    }
+
+    if (result.url) {
+      await Linking.openURL(result.url);
+    } else {
+      Alert.alert('Error', 'No checkout URL returned.');
+    }
+  } catch (err) {
+    setCheckoutLoading(false);
+    console.error('Upgrade error:', err);
+    Alert.alert('Error', 'An unexpected error occurred.');
+  }
+};
+
+
 
   const handleRestore = async () => {
     Alert.alert('Restore', 'Restore purchases not implemented yet.');
