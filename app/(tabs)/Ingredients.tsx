@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, SafeAreaView } from 'react-native';
+import { ScrollView, SafeAreaView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { IngredientsDisplayWithSelection } from '../components/IngredientsScreenComponents/IngredientsDisplayWithSelection';
@@ -14,13 +14,13 @@ import { useIngredientsLogic } from '../components/IngredientsScreenComponents/u
 
 import styles from '../styles/Ingredients.styles';
 import { handleRemoveFromGrocery } from '../components/IngredientsScreenComponents/handleRemoveFromGrocery';
-import { handleNavigateToGrocery } from '../components/IngredientsScreenComponents/handleNavigateToGrocery';
+import { supabase } from '../lib/supabase';
 
 export default function IngredientsScreen() {
   const router = useRouter();
   const { ingredientList, recipeList, parsedDetailedRecipes, setIngredientList } = useParsedParams();
   const { selectedIngredients, handleToggleIngredient, handleSelectAll } = useIngredientSelection(ingredientList);
-  const { isSaving, removedRecipes, getOrCreateAnimation, handleAddRecipe } = useIngredientsLogic({ detailedRecipes: parsedDetailedRecipes });
+  const { isSaving, removedRecipes, getOrCreateAnimation, handleAddRecipe, handleAddIngredientsToGroceryList } = useIngredientsLogic({ detailedRecipes: parsedDetailedRecipes });
 
   if (!ingredientList || ingredientList.length === 0) return <EmptyState />;
 
@@ -41,7 +41,39 @@ export default function IngredientsScreen() {
 
         <GroceryActionButtons
           selectedCount={selectedCount}
-          onAdd={() => handleNavigateToGrocery(selectedIngredients, setIngredientList, router)}
+          onAdd={async () => {
+            try {
+              console.log('Attempting to add ingredients to grocery list...');
+              const user = await supabase.auth.getUser();
+              const userId = user.data.user?.id;
+              console.log('User ID:', userId);
+
+              if (!userId) {
+                Alert.alert('Error', 'You must be logged in to add to your grocery list.');
+                console.warn('Add to grocery list blocked: User not logged in.');
+                return;
+              }
+
+              const selectedItems = Array.from(selectedIngredients);
+              console.log('Selected items to add:', selectedItems);
+
+              const { inserted, skipped } = await handleAddIngredientsToGroceryList(userId, selectedItems);
+
+              console.log('Inserted items:', inserted);
+              console.log('Skipped items:', skipped);
+
+              if (inserted.length === 0 && skipped.length > 0) {
+                Alert.alert('No Items Added', `Items may already exist or were blocked: ${skipped.join(', ')}`);
+              }
+
+              setIngredientList((prev) => prev.filter((item) => !selectedIngredients.has(item)));
+
+              console.log('Ingredient list updated after adding items.');
+            } catch (error) {
+              console.error('Error in onAdd handler:', error);
+              Alert.alert('Error', 'An unexpected error occurred while adding items.');
+            }
+          }}
           onRemove={() => handleRemoveFromGrocery(selectedIngredients, setIngredientList, router)}
         />
 
@@ -51,7 +83,7 @@ export default function IngredientsScreen() {
           ingredientList={ingredientList}
           removedRecipes={removedRecipes}
           getOrCreateAnimation={getOrCreateAnimation}
-          onAddRecipe={(recipe) => handleAddRecipe(recipe, ingredientList)}
+          onAddRecipe={(recipe) => handleAddRecipe([recipe], ingredientList)}
           isSaving={isSaving}
           detailedRecipes={parsedDetailedRecipes}
         />

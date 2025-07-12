@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { Alert } from 'react-native'; 
 import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Router } from 'expo-router';
@@ -54,13 +54,41 @@ export const handleRemoveFromGrocery = async (
                   ingredient_name: name,
                   user_id: userId,
                   in_cart: true,
+                  created_at: new Date().toISOString(),
                 }));
-                const { error: insertError } = await supabase.from('grocery').insert(newCartItems);
-                if (insertError) {
-                  Alert.alert('Error', 'Failed to add items to shopping cart.');
-                } else {
-                  Alert.alert('Success', 'Items added to your shopping cart.');
+
+                let insertedCount = 0;
+                let skippedItems: string[] = [];
+                let errors: string[] = [];
+
+                for (const item of newCartItems) {
+                  const { error: insertError } = await supabase.from('grocery').insert([item]);
+
+                  if (insertError) {
+                    if (insertError.code === '23505') {
+                      // Duplicate key violation — skip this item
+                      skippedItems.push(item.ingredient_name);
+                    } else if (insertError.code === '42501') {
+                      // RLS violation, warn and skip
+                      errors.push(`Permission denied for ${item.ingredient_name}`);
+                    } else {
+                      errors.push(`Error adding ${item.ingredient_name}: ${insertError.message}`);
+                    }
+                  } else {
+                    insertedCount++;
+                  }
                 }
+
+                if (insertedCount > 0) {
+                  Alert.alert('Success', `Added ${insertedCount} item(s) to your shopping cart.`);
+                }
+                if (skippedItems.length > 0) {
+                  Alert.alert('Skipped Items', `Already in cart: ${skippedItems.join(', ')}`);
+                }
+                if (errors.length > 0) {
+                  Alert.alert('Errors', errors.join('\n'));
+                }
+
                 router.push('/grocery');
               },
             },
@@ -75,6 +103,7 @@ export const handleRemoveFromGrocery = async (
       Alert.alert('Error', 'There was a problem updating your grocery list.');
     }
   } else {
+    // Local storage fallback
     try {
       const existingGroceryRaw = await AsyncStorage.getItem('groceryItems');
       const groceryItems = existingGroceryRaw ? JSON.parse(existingGroceryRaw) : [];

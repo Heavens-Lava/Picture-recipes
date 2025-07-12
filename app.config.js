@@ -4,7 +4,7 @@ export default {
   expo: {
     name: 'picture-recipes-app',
     slug: 'picture-recipes-app',
-    version: '1.0.1',
+    version: '1.0.2',
     orientation: 'portrait',
     icon: './assets/icons/picture-recipes-icon.png',
     scheme: 'myapp',

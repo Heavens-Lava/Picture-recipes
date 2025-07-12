@@ -150,7 +150,7 @@ Be specific about ingredient names and focus on recipes that maximize the use of
         cookTime: '15 min',
         servings: 2,
         difficulty: 'Easy',
-        rating: 4,
+        rating: null,
         availableIngredients: validIngredients.length,
         totalIngredients: validIngredients.length,
       };

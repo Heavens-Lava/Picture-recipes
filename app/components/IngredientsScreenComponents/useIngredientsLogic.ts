@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Alert, Animated } from 'react-native';
+import { Animated } from 'react-native';
 import { useRouter } from 'expo-router';
-import { saveRecipeToSupabase } from '../../lib/supabaseFunctions';
+import { saveRecipeToSupabase, getUserProfile, getUserRecipeCount } from '../../lib/supabaseFunctions';
 import {
   extractRecipeIngredients,
   parseRecipeString,
@@ -9,16 +9,13 @@ import {
 import openai from '../../lib/openai';
 import { generateRecipeImage } from '../../lib/generateImage';
 import type { ParsedRecipe } from '../CameraScreenComponents/AIResponseParser';
-import { getUserProfile, getUserRecipeCount } from '../../lib/supabaseFunctions';
+import { supabase } from '../../lib/supabase';
 
-
+import { Alert } from 'react-native'; // Make sure this is at the top
 interface UseIngredientsLogicProps {
   detailedRecipes?: ParsedRecipe[];
 }
 
-/**
- * Custom React hook that manages ingredients and recipe saving logic
- */
 export const useIngredientsLogic = ({ detailedRecipes = [] }: UseIngredientsLogicProps = {}) => {
   const router = useRouter();
 
@@ -62,9 +59,6 @@ export const useIngredientsLogic = ({ detailedRecipes = [] }: UseIngredientsLogi
     });
   };
 
-  /**
-   * Generate cooking instructions using GPT-4o based on recipe name and ingredients.
-   */
   const generateInstructions = async (recipeName: string, ingredients: string[]): Promise<string> => {
     try {
       const prompt = `Create clear, beginner-friendly cooking instructions for a recipe called "${recipeName}" using the following ingredients:\n\n${ingredients.join(', ')}.`;
@@ -76,104 +70,129 @@ export const useIngredientsLogic = ({ detailedRecipes = [] }: UseIngredientsLogi
       });
 
       return completion.choices[0].message.content.trim();
-    } catch (error) {
-      console.error('Error generating instructions:', error);
+    } catch {
       return 'Instructions will be generated when you view the recipe.';
     }
   };
 
+  const handleAddRecipe = async (recipesToAdd: string[], allFridgeIngredients: string[]) => {
+    if (isSaving) return;
+
+    setIsSaving(true);
+    let successCount = 0;
+
+    try {
+      const profile = await getUserProfile();
+      const recipeCount = await getUserRecipeCount();
+
+      if (!profile) return;
+
+      const isPremium = profile.has_premium;
+      const recipeLimit = 5;
+
+      for (const recipe of recipesToAdd) {
+        if (!isPremium && recipeCount + successCount >= recipeLimit) {
+          break;
+        }
+
+        try {
+          const detailedRecipe = detailedRecipes.find(
+            (d) => d.name.toLowerCase() === recipe.toLowerCase()
+          );
+
+          const relevantIngredients = detailedRecipe?.availableIngredients?.length
+            ? detailedRecipe.availableIngredients
+            : extractRecipeIngredients(recipe, allFridgeIngredients);
+
+          const { recipeName } = parseRecipeString(recipe);
+          const instructions = await generateInstructions(recipeName, relevantIngredients);
+
+          let imageUrl = detailedRecipe?.image || null;
+          if (!imageUrl) {
+            imageUrl = await generateRecipeImage(recipeName);
+          }
+
+          const recipeData = {
+            title: recipeName,
+            recipe_name: recipeName,
+            ingredients: relevantIngredients,
+            instructions,
+            image: imageUrl,
+            cookTime: '15-30 min',
+            servings: 2,
+            difficulty: 'Easy',
+            rating: null,
+            availableIngredients: relevantIngredients.length,
+            totalIngredients: relevantIngredients.length,
+            created_at: new Date().toISOString(),
+          };
+
+          const result = await saveRecipeToSupabase(recipeData);
+
+          if (result) {
+            animateRecipeRemoval(recipe);
+            successCount++;
+          }
+        } catch {
+          // silently ignore errors per recipe
+        }
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   /**
-   * Adds a recipe to Supabase with AI-generated instructions and image.
+   * Adds selected ingredients to grocery list without errors or alerts.
+   * Silently skips duplicates by pre-checking existing items.
    */
-  const handleAddRecipe = async (recipe: string, allFridgeIngredients: string[]) => {
-  if (isSaving) return;
-
-  setIsSaving(true);
+const handleAddIngredientsToGroceryList = async (userId: string, ingredients: string[]) => {
   try {
-    // 🔒 Check user profile and recipe count
-    const profile = await getUserProfile();
-    const recipeCount = await getUserRecipeCount();
+    const { data: existingItems, error: fetchError } = await supabase
+      .from('grocery')
+      .select('ingredient_name')
+      .eq('user_id', userId);
 
-    if (!profile) {
-      Alert.alert('Error', 'Could not verify user profile.');
-      setIsSaving(false);
-      return;
+    if (fetchError) {
+      Alert.alert('Error', 'Could not fetch existing grocery items.');
+      return { inserted: [], skipped: ingredients };
     }
 
-    const isPremium = profile.has_premium;
+    const existingNames = existingItems?.map(item => item.ingredient_name) ?? [];
+    const newItems = ingredients.filter(name => !existingNames.includes(name));
 
-    // 🚧 Trial limit: 5 recipes max for free users
-    if (!isPremium && recipeCount >= 5) {
-      Alert.alert(
-        'Upgrade Required',
-        'You’ve reached your 5 recipe trial limit. Upgrade to unlock unlimited recipes!',
-        [
-          {
-            text: 'Upgrade',
-            onPress: () => router.push('/PaywallScreen'), // 👈 Update route if needed
-          },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
-      setIsSaving(false);
-      return;
+    if (newItems.length === 0) {
+      Alert.alert('No New Items', 'All selected ingredients are already in your grocery list.');
+      return { inserted: [], skipped: ingredients };
     }
 
-    // ✅ Proceed with adding recipe
-    const detailedRecipe = detailedRecipes.find(
-      (d) => d.name.toLowerCase() === recipe.toLowerCase()
-    );
+    const insertPayload = newItems.map(name => ({
+      user_id: userId,
+      ingredient_name: name,
+      in_cart: false,
+      added_at: new Date().toISOString(),
+    }));
 
-    const relevantIngredients = detailedRecipe?.availableIngredients?.length
-      ? detailedRecipe.availableIngredients
-      : extractRecipeIngredients(recipe, allFridgeIngredients);
+    const { error: insertError } = await supabase.from('grocery').insert(insertPayload);
 
-    const { recipeName } = parseRecipeString(recipe);
-    const instructions = await generateInstructions(recipeName, relevantIngredients);
-
-    let imageUrl = detailedRecipe?.image || null;
-    if (!imageUrl) {
-      imageUrl = await generateRecipeImage(recipeName);
+    if (insertError) {
+      Alert.alert('Error', 'There was an issue adding some ingredients. Please try again.');
+      return { inserted: [], skipped: newItems };
     }
 
-    const recipeData = {
-      title: recipeName,
-      recipe_name: recipeName,
-      ingredients: relevantIngredients,
-      instructions,
-      image: imageUrl,
-      cookTime: '15-30 min',
-      servings: 2,
-      difficulty: 'Easy',
-      rating: 4,
-      availableIngredients: relevantIngredients.length,
-      totalIngredients: relevantIngredients.length,
-      created_at: new Date().toISOString(),
-    };
+    // 🎉 Show alert summary
+    const addedText = newItems.join(', ');
+    const skipped = ingredients.filter(n => existingNames.includes(n));
+    const skippedText = skipped.length > 0 ? `\n\nAlready in list: ${skipped.join(', ')}` : '';
 
-    const result = await saveRecipeToSupabase(recipeData);
+    Alert.alert('Grocery List Updated', `Added: ${addedText}${skippedText}`);
 
-    if (result) {
-      animateRecipeRemoval(recipe);
-      Alert.alert(
-        'Success',
-        `Recipe "${recipeName}" added to your recipes!\n\nUsing ${relevantIngredients.length} ingredients from your fridge.`,
-        [
-          { text: 'View Recipes', onPress: () => router.push('/recipes') },
-          { text: 'Stay Here', style: 'cancel' },
-        ]
-      );
-    } else {
-      Alert.alert('Info', `Recipe "${recipeName}" may already exist or could not be saved.`);
-    }
-  } catch (error) {
-    console.error('Error saving recipe:', error);
-    Alert.alert('Error', 'Failed to save the recipe. Please try again.');
-  } finally {
-    setIsSaving(false);
+    return { inserted: newItems, skipped };
+  } catch {
+    Alert.alert('Error', 'Unexpected issue adding to your grocery list.');
+    return { inserted: [], skipped: ingredients };
   }
 };
-
 
   return {
     isSaving,
@@ -181,5 +200,6 @@ export const useIngredientsLogic = ({ detailedRecipes = [] }: UseIngredientsLogi
     parseArrayParam,
     getOrCreateAnimation,
     handleAddRecipe,
+    handleAddIngredientsToGroceryList,
   };
 };

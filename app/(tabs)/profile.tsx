@@ -53,6 +53,7 @@ interface UserData {
   id: string;
   avatar_url?: string;
   created_at?: string;
+    has_premium?: boolean; // ✅ add this
 }
 
 interface UserStats {
@@ -149,52 +150,53 @@ const fetchGroceryItemCount = async () => {
     }
   };
 
-  const loadUserProfile = async (user: any) => {
-    try {
-      console.log('Loading profile for user:', user.id);
-      
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+const loadUserProfile = async (user: any) => {
+  try {
+    console.log('Loading profile for user:', user.id);
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading profile:', error);
-      }
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
-      const displayName = profile?.name || 
-                         profile?.display_name || 
-                         user.user_metadata?.name || 
-                         user.user_metadata?.full_name ||
-                         'Welcome Back!';
-
-      setUserData({
-        id: user.id,
-        email: user.email || '',
-        name: displayName,
-        avatar_url: profile?.avatar_url || user.user_metadata?.avatar_url,
-        created_at: profile?.created_at || user.created_at,
-      });
-
-      console.log('Profile loaded:', { name: displayName, email: user.email });
-    } catch (error) {
-      console.error('Error loading user profile:', error);
-      
-      // Fallback to user metadata
-      const fallbackName = user.user_metadata?.name || 
-                          user.user_metadata?.full_name || 
-                          'Welcome Back!';
-      
-      setUserData({
-        id: user.id,
-        email: user.email || '',
-        name: fallbackName,
-        avatar_url: user.user_metadata?.avatar_url,
-        created_at: user.created_at,
-      });
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error loading profile:', error);
     }
-  };
+
+    const displayName = profile?.name ||
+                        profile?.display_name ||
+                        user.user_metadata?.name ||
+                        user.user_metadata?.full_name ||
+                        'Welcome Back!';
+
+    setUserData({
+      id: user.id,
+      email: user.email || '',
+      name: displayName,
+      avatar_url: profile?.avatar_url || user.user_metadata?.avatar_url,
+      created_at: profile?.created_at || user.created_at,
+      has_premium: profile?.has_premium ?? false, // ✅ This line is now valid
+    });
+
+    console.log('Profile loaded:', { name: displayName, email: user.email });
+  } catch (error) {
+    console.error('Error loading user profile:', error);
+
+    // fallback
+    const fallbackName = user.user_metadata?.name || user.user_metadata?.full_name || 'Welcome Back!';
+    
+    setUserData({
+      id: user.id,
+      email: user.email || '',
+      name: fallbackName,
+      avatar_url: user.user_metadata?.avatar_url,
+      created_at: user.created_at,
+      has_premium: false, // fallback default
+    });
+  }
+};
+
 
 const loadUserStats = async (userId: string) => {
   try {
@@ -349,10 +351,16 @@ const getMenuOptions = (): MenuOption[] => {
         }
       },
     },
-    {
-  icon: <CreditCard size={24} color="#10B981" />,
-  label: 'Upgrade',
-  onPress: () => router.push('/othertabs/FullVersionScreen'),
+{
+  icon: <CreditCard size={24} color={userData?.has_premium ? "#10B981" : "#EF4444"} />,
+  label: userData?.has_premium ? 'Membership Status' : 'Upgrade',
+  onPress: () => {
+    if (userData?.has_premium) {
+      router.push('/othertabs/MembershipStatus');
+    } else {
+      router.push('/othertabs/FullVersionScreen');
+    }
+  },
 },
 
     {
