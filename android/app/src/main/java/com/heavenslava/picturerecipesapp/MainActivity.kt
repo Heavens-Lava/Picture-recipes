@@ -1,4 +1,4 @@
-package com.jeffreymacy.picturerecipesapp
+package com.heavenslava.picturerecipesapp
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

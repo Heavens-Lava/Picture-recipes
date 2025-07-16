@@ -10,6 +10,7 @@ import LocationToggle from '../components/CameraScreenComponents/LocationToggle'
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useCameraLogic } from '../components/CameraScreenComponents/useCameraLogic';
 
+import BannerAdComponent from '../components/BannerAdComponent';
 export default function CameraScreen() {
   useRequireAuth();
   const {
@@ -30,7 +31,10 @@ export default function CameraScreen() {
   const navigation = useNavigation();
 
   const navigateToIngredients = () => {
-    console.log('When navigating to ingredients: Ingredients array:', ingredients);
+    console.log(
+      'When navigating to ingredients: Ingredients array:',
+      ingredients
+    );
     console.log('When navigating to ingredients: Recipes array:', recipes);
     console.log('When navigating to ingredients: Last photo:', lastPhoto);
 
@@ -49,7 +53,9 @@ export default function CameraScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
-          {`Scan Your ${location.charAt(0).toUpperCase() + location.slice(1)} 📸`}
+          {`Scan Your ${
+            location.charAt(0).toUpperCase() + location.slice(1)
+          } 📸`}
         </Text>
         <Text style={styles.headerSubtitle}>
           Take a photo of your {location} to discover recipe ideas
@@ -57,7 +63,6 @@ export default function CameraScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* New wrapper for camera + buttons */}
         <View style={styles.cameraWithControlsContainer}>
           <CameraViewComponent
             cameraRef={cameraRef}
@@ -66,7 +71,6 @@ export default function CameraScreen() {
             isAnalyzing={isAnalyzing}
             styles={styles}
           />
-          {/* Overlay controls on top of camera */}
           <View style={styles.cameraControlsOverlay}>
             <CameraControls
               isAnalyzing={isAnalyzing}
@@ -86,14 +90,29 @@ export default function CameraScreen() {
 
         <View style={styles.tipsContainer}>
           <Text style={styles.tipsTitle}>Quick Tips</Text>
-          <Text style={styles.tipItem}>• Take a photo of your fridge or pantry to detect ingredients.</Text>
-          <Text style={styles.tipItem}>• Tap the ✨ star button to re-analyze the photo if needed.</Text>
-          <Text style={styles.tipItem}>• From the Ingredients screen, you can:</Text>
-          <Text style={styles.tipSubItem}>– Add recipes to your saved list</Text>
-          <Text style={styles.tipSubItem}>– Add ingredients to your grocery list</Text>
-          <Text style={styles.tipSubItem}>– Remove items already in your cart</Text>
+          <Text style={styles.tipItem}>
+            • Take a photo of your fridge or pantry to detect ingredients.
+          </Text>
+          <Text style={styles.tipItem}>
+            • Tap the ✨ star button to re-analyze the photo if needed.
+          </Text>
+          <Text style={styles.tipItem}>
+            • From the Ingredients screen, you can:
+          </Text>
+          <Text style={styles.tipSubItem}>
+            – Add recipes to your saved list
+          </Text>
+          <Text style={styles.tipSubItem}>
+            – Add ingredients to your grocery list
+          </Text>
+          <Text style={styles.tipSubItem}>
+            – Remove items already in your cart
+          </Text>
         </View>
       </ScrollView>
+
+      {/* 👇 Add banner ad outside ScrollView */}
+      <BannerAdComponent />
     </SafeAreaView>
   );
 }
