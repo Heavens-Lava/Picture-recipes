@@ -263,7 +263,7 @@ export default function RecipesTab() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <BannerAdComponent />
+      {/* <BannerAdComponent /> */}
 
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>

@@ -663,7 +663,7 @@ export default function GroceryTab() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <BannerAdComponent />
+      {/* <BannerAdComponent /> */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Grocery List</Text>
         <Text style={styles.headerSubtitle}>

@@ -114,7 +114,7 @@ export default function InstructionsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <BannerAdComponent />
+      {/* <BannerAdComponent /> */}
       <BackHeader />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>

@@ -112,7 +112,7 @@ export default function CameraScreen() {
       </ScrollView>
 
       {/* 👇 Add banner ad outside ScrollView */}
-      <BannerAdComponent />
+      {/* <BannerAdComponent /> */}
     </SafeAreaView>
   );
 }

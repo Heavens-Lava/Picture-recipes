@@ -1,0 +1,4 @@
+npx expo run:android
+npx expo start --dev-client     
+npx eas build --profile development --platform android  
+
