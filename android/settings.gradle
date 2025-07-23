@@ -21,7 +21,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
   }
 }
 
-rootProject.name = 'picture-recipes-app'
+rootProject.name = 'picture-recipes2'
 
 dependencyResolutionManagement {
   versionCatalogs {

@@ -2,9 +2,9 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: 'picture-recipes-app',
-    slug: 'picture-recipes-app',
-    version: '1.0.2',
+    name: 'picture-recipes2',
+    slug: 'picture-recipes2',
+    version: '1.0.3',
     orientation: 'portrait',
     icon: './assets/icons/picture-recipes-icon.png',
     scheme: 'myapp',
@@ -24,6 +24,7 @@ export default {
       },
     },
     ios: {
+      bundleIdentifier: 'com.jeffreymacy.picturerecipesapp',
       infoPlist: {
         NSCameraUsageDescription:
           'We need your permission to access the camera',
@@ -46,7 +47,7 @@ export default {
       SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
       SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
       eas: {
-        projectId: '2af9d2cd-4cde-46a0-b54e-e1a3b0729b20',
+        projectId: '82b9175c-9f84-4492-a8e4-d2d6a06eb2c7',
       },
       ANDROID_ADMOB_APP_ID: process.env.EXPO_PUBLIC_ANDROID_ADMOB_APP_ID,
       IOS_ADMOB_APP_ID: process.env.EXPO_PUBLIC_IOS_ADMOB_APP_ID,

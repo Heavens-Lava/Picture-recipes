@@ -11,13 +11,22 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Check, ShoppingCart, Trash2, Camera, List, X } from 'lucide-react-native';
+import {
+  Plus,
+  Check,
+  ShoppingCart,
+  Trash2,
+  Camera,
+  List,
+  X,
+} from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useFocusEffect } from '@react-navigation/native';
 import { Audio } from 'expo-av';
+import BannerAdComponent from '../components/BannerAdComponent';
 
 interface GroceryItem {
   id: string;
@@ -28,8 +37,8 @@ interface GroceryItem {
 }
 
 export default function GroceryTab() {
-      useRequireAuth(); // Ensure the user is authenticated before accessing this screen
-  
+  useRequireAuth(); // Ensure the user is authenticated before accessing this screen
+
   const [items, setItems] = useState<GroceryItem[]>([]);
   const [selectedTab, setSelectedTab] = useState<'needed' | 'cart'>('needed');
   const [showCartToast, setShowCartToast] = useState(false);
@@ -40,102 +49,99 @@ export default function GroceryTab() {
   const [newItemName, setNewItemName] = useState('');
   const navigation = useNavigation();
   const { newIngredients } = useLocalSearchParams();
-  
+
   // Animation values
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(-50)).current;
   const removedToastOpacity = useRef(new Animated.Value(0)).current;
   const removedToastTranslateY = useRef(new Animated.Value(-50)).current;
-  
+
   // Add debounce mechanism to prevent rapid updates
   const processingItems = useRef(new Set<string>());
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const removedToastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-    const soundRef = useRef<Audio.Sound | null>(null);
 
-useFocusEffect(
-  useCallback(() => {
-    fetchGroceryItemsFromDatabase();
-  }, [])
-);
-  
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchGroceryItemsFromDatabase();
+    }, [])
+  );
+
   // Handle new ingredients from the ingredients screen
-useEffect(() => {
-  async function prepareAudio() {
-    try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      });
+  useEffect(() => {
+    async function prepareAudio() {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
 
-      const { sound } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/cooking-bell.wav') // update path if needed
-      );
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/cooking-bell.wav') // update path if needed
+        );
 
-      soundRef.current = sound;
-
-    } catch (error) {
-      console.error('Audio setup or loading failed:', error);
+        soundRef.current = sound;
+      } catch (error) {
+        console.error('Audio setup or loading failed:', error);
+      }
     }
-  }
 
-  prepareAudio();
+    prepareAudio();
 
-  if (newIngredients) {
-    try {
-      const parsedIngredients = JSON.parse(newIngredients as string);
-      addNewIngredientsToGroceryList(parsedIngredients);
-    } catch (error) {
-      console.error('Error parsing new ingredients:', error);
+    if (newIngredients) {
+      try {
+        const parsedIngredients = JSON.parse(newIngredients as string);
+        addNewIngredientsToGroceryList(parsedIngredients);
+      } catch (error) {
+        console.error('Error parsing new ingredients:', error);
+      }
     }
-  }
 
-  return () => {
-    if (soundRef.current) {
-      soundRef.current.unloadAsync();
-      soundRef.current = null;
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+    };
+  }, [newIngredients]);
+
+  const fetchGroceryItemsFromDatabase = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      console.log('User not logged in');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('grocery')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('❌ Error fetching grocery items:', error.message);
+      return;
+    }
+
+    if (data) {
+      const formattedItems = data.map((item) => ({
+        id: item.id,
+        name: item.ingredient_name,
+        category: categorizeIngredient(item.ingredient_name),
+        needed: true,
+        inCart: item.in_cart || false,
+      }));
+
+      setItems(formattedItems);
     }
   };
-}, [newIngredients]);
-
-
-
-
-const fetchGroceryItemsFromDatabase = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    console.log("User not logged in");
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from('grocery')
-    .select('*')
-    .eq('user_id', user.id);
-
-  if (error) {
-    console.error('❌ Error fetching grocery items:', error.message);
-    return;
-  }
-
-  if (data) {
-    const formattedItems = data.map((item) => ({
-      id: item.id,
-      name: item.ingredient_name,
-      category: categorizeIngredient(item.ingredient_name),
-      needed: true,
-      inCart: item.in_cart || false,
-    }));
-
-    setItems(formattedItems);
-  }
-};
-
 
   // Function to add new ingredients to grocery list
   const addNewIngredientsToGroceryList = (ingredients: string[]) => {
@@ -147,17 +153,21 @@ const fetchGroceryItemsFromDatabase = async () => {
       inCart: false,
     }));
 
-    setItems(prevItems => {
+    setItems((prevItems) => {
       // Filter out duplicates based on name (case-insensitive)
-      const existingNames = new Set(prevItems.map(item => item.name.toLowerCase()));
+      const existingNames = new Set(
+        prevItems.map((item) => item.name.toLowerCase())
+      );
       const uniqueNewItems = newItems.filter(
-        item => !existingNames.has(item.name.toLowerCase())
+        (item) => !existingNames.has(item.name.toLowerCase())
       );
 
       if (uniqueNewItems.length > 0) {
         Alert.alert(
           'Items Added',
-          `${uniqueNewItems.length} new item${uniqueNewItems.length !== 1 ? 's' : ''} added to your grocery list!`,
+          `${uniqueNewItems.length} new item${
+            uniqueNewItems.length !== 1 ? 's' : ''
+          } added to your grocery list!`,
           [{ text: 'OK' }]
         );
       }
@@ -167,87 +177,112 @@ const fetchGroceryItemsFromDatabase = async () => {
   };
 
   // Function to add a single item manually
-const addManualItem = async () => {
-  const trimmedName = newItemName.trim();
-  if (trimmedName === '') {
-    Alert.alert('Error', 'Please enter an item name');
-    return;
-  }
+  const addManualItem = async () => {
+    const trimmedName = newItemName.trim();
+    if (trimmedName === '') {
+      Alert.alert('Error', 'Please enter an item name');
+      return;
+    }
 
-  const existingNames = new Set(items.map(item => item.name.toLowerCase()));
-  if (existingNames.has(trimmedName.toLowerCase())) {
-    Alert.alert('Item Exists', 'This item is already in your grocery list');
-    return;
-  }
+    const existingNames = new Set(items.map((item) => item.name.toLowerCase()));
+    if (existingNames.has(trimmedName.toLowerCase())) {
+      Alert.alert('Item Exists', 'This item is already in your grocery list');
+      return;
+    }
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-  if (userError || !user) {
-    Alert.alert('Error', 'Unable to fetch user information.');
-    console.error('User error:', userError?.message);
-    return;
-  }
+    if (userError || !user) {
+      Alert.alert('Error', 'Unable to fetch user information.');
+      console.error('User error:', userError?.message);
+      return;
+    }
 
-  const { data, error } = await supabase
-    .from('grocery')
-    .insert([{ ingredient_name: trimmedName, user_id: user.id }])
-    .select()
-    .single();
+    const { data, error } = await supabase
+      .from('grocery')
+      .insert([{ ingredient_name: trimmedName, user_id: user.id }])
+      .select()
+      .single();
 
-  if (error || !data) {
-    Alert.alert('Error', 'Failed to add item to the database.');
-    console.error('Insert error:', error?.message);
-    return;
-  }
+    if (error || !data) {
+      Alert.alert('Error', 'Failed to add item to the database.');
+      console.error('Insert error:', error?.message);
+      return;
+    }
 
-  const newItem: GroceryItem = {
-    id: data.id,
-    name: data.ingredient_name,
-    category: categorizeIngredient(data.ingredient_name),
-    needed: true,
-    inCart: false,
+    const newItem: GroceryItem = {
+      id: data.id,
+      name: data.ingredient_name,
+      category: categorizeIngredient(data.ingredient_name),
+      needed: true,
+      inCart: false,
+    };
+
+    setItems((prevItems) => [...prevItems, newItem]);
+    setNewItemName('');
+    setShowManualAddModal(false);
+
+    Alert.alert(
+      'Item Added',
+      `"${newItem.name}" has been added to your grocery list!`
+    );
   };
-
-  setItems(prevItems => [...prevItems, newItem]);
-  setNewItemName('');
-  setShowManualAddModal(false);
-
-  Alert.alert('Item Added', `"${newItem.name}" has been added to your grocery list!`);
-};
-
 
   // Simple categorization function
   const categorizeIngredient = (ingredient: string): string => {
     const lowerIngredient = ingredient.toLowerCase();
-    
+
     // Produce
-    if (lowerIngredient.includes('apple') || lowerIngredient.includes('banana') || 
-        lowerIngredient.includes('orange') || lowerIngredient.includes('tomato') ||
-        lowerIngredient.includes('onion') || lowerIngredient.includes('carrot') ||
-        lowerIngredient.includes('potato') || lowerIngredient.includes('lettuce')) {
+    if (
+      lowerIngredient.includes('apple') ||
+      lowerIngredient.includes('banana') ||
+      lowerIngredient.includes('orange') ||
+      lowerIngredient.includes('tomato') ||
+      lowerIngredient.includes('onion') ||
+      lowerIngredient.includes('carrot') ||
+      lowerIngredient.includes('potato') ||
+      lowerIngredient.includes('lettuce')
+    ) {
       return 'Produce';
     }
-    
+
     // Dairy
-    if (lowerIngredient.includes('milk') || lowerIngredient.includes('cheese') || 
-        lowerIngredient.includes('yogurt') || lowerIngredient.includes('butter')) {
+    if (
+      lowerIngredient.includes('milk') ||
+      lowerIngredient.includes('cheese') ||
+      lowerIngredient.includes('yogurt') ||
+      lowerIngredient.includes('butter')
+    ) {
       return 'Dairy';
     }
-    
+
     // Meat & Seafood
-    if (lowerIngredient.includes('chicken') || lowerIngredient.includes('beef') || 
-        lowerIngredient.includes('fish') || lowerIngredient.includes('salmon') ||
-        lowerIngredient.includes('pork') || lowerIngredient.includes('turkey')) {
+    if (
+      lowerIngredient.includes('chicken') ||
+      lowerIngredient.includes('beef') ||
+      lowerIngredient.includes('fish') ||
+      lowerIngredient.includes('salmon') ||
+      lowerIngredient.includes('pork') ||
+      lowerIngredient.includes('turkey')
+    ) {
       return 'Meat & Seafood';
     }
-    
+
     // Pantry
-    if (lowerIngredient.includes('rice') || lowerIngredient.includes('pasta') || 
-        lowerIngredient.includes('flour') || lowerIngredient.includes('oil') ||
-        lowerIngredient.includes('salt') || lowerIngredient.includes('pepper')) {
+    if (
+      lowerIngredient.includes('rice') ||
+      lowerIngredient.includes('pasta') ||
+      lowerIngredient.includes('flour') ||
+      lowerIngredient.includes('oil') ||
+      lowerIngredient.includes('salt') ||
+      lowerIngredient.includes('pepper')
+    ) {
       return 'Pantry';
     }
-    
+
     return 'Other';
   };
 
@@ -268,15 +303,57 @@ const addManualItem = async () => {
   }, []);
 
   // Optimized toast function for adding to cart
-  const showAddedToCartToast = useCallback((itemName: string) => {
-    // Clear existing timeout
-    if (toastTimeoutRef.current) {
-      clearTimeout(toastTimeoutRef.current);
-    }
+  const showAddedToCartToast = useCallback(
+    (itemName: string) => {
+      // Clear existing timeout
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
 
-    // If toast is already showing, just update the item name
-    if (showCartToast) {
+      // If toast is already showing, just update the item name
+      if (showCartToast) {
+        setLastAddedItem(itemName);
+        toastTimeoutRef.current = setTimeout(() => {
+          Animated.parallel([
+            Animated.timing(toastOpacity, {
+              toValue: 0,
+              duration: 250,
+              useNativeDriver: true,
+            }),
+            Animated.timing(toastTranslateY, {
+              toValue: -50,
+              duration: 250,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            setShowCartToast(false);
+          });
+        }, 2000);
+        return;
+      }
+
       setLastAddedItem(itemName);
+      setShowCartToast(true);
+
+      // Reset animation values
+      toastOpacity.setValue(0);
+      toastTranslateY.setValue(-50);
+
+      // Animate in
+      Animated.parallel([
+        Animated.timing(toastOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(toastTranslateY, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Auto hide after 2 seconds
       toastTimeoutRef.current = setTimeout(() => {
         Animated.parallel([
           Animated.timing(toastOpacity, {
@@ -293,59 +370,62 @@ const addManualItem = async () => {
           setShowCartToast(false);
         });
       }, 2000);
-      return;
-    }
-
-    setLastAddedItem(itemName);
-    setShowCartToast(true);
-    
-    // Reset animation values
-    toastOpacity.setValue(0);
-    toastTranslateY.setValue(-50);
-    
-    // Animate in
-    Animated.parallel([
-      Animated.timing(toastOpacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(toastTranslateY, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    
-    // Auto hide after 2 seconds
-    toastTimeoutRef.current = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(toastOpacity, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(toastTranslateY, {
-          toValue: -50,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setShowCartToast(false);
-      });
-    }, 2000);
-  }, [showCartToast, toastOpacity, toastTranslateY]);
+    },
+    [showCartToast, toastOpacity, toastTranslateY]
+  );
 
   // Optimized toast function for removing from cart
-  const showRemovedFromCartToast = useCallback((itemName: string) => {
-    // Clear existing timeout
-    if (removedToastTimeoutRef.current) {
-      clearTimeout(removedToastTimeoutRef.current);
-    }
+  const showRemovedFromCartToast = useCallback(
+    (itemName: string) => {
+      // Clear existing timeout
+      if (removedToastTimeoutRef.current) {
+        clearTimeout(removedToastTimeoutRef.current);
+      }
 
-    // If toast is already showing, just update the item name
-    if (showRemovedToast) {
+      // If toast is already showing, just update the item name
+      if (showRemovedToast) {
+        setLastRemovedItem(itemName);
+        removedToastTimeoutRef.current = setTimeout(() => {
+          Animated.parallel([
+            Animated.timing(removedToastOpacity, {
+              toValue: 0,
+              duration: 250,
+              useNativeDriver: true,
+            }),
+            Animated.timing(removedToastTranslateY, {
+              toValue: -50,
+              duration: 250,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            setShowRemovedToast(false);
+          });
+        }, 2000);
+        return;
+      }
+
       setLastRemovedItem(itemName);
+      setShowRemovedToast(true);
+
+      // Reset animation values
+      removedToastOpacity.setValue(0);
+      removedToastTranslateY.setValue(-50);
+
+      // Animate in
+      Animated.parallel([
+        Animated.timing(removedToastOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(removedToastTranslateY, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Auto hide after 2 seconds
       removedToastTimeoutRef.current = setTimeout(() => {
         Animated.parallel([
           Animated.timing(removedToastOpacity, {
@@ -362,141 +442,108 @@ const addManualItem = async () => {
           setShowRemovedToast(false);
         });
       }, 2000);
+    },
+    [showRemovedToast, removedToastOpacity, removedToastTranslateY]
+  );
+
+  // Optimized toggleItemCart function with debouncing
+  const toggleItemCart = useCallback(
+    async (id: string) => {
+      if (processingItems.current.has(id)) return;
+      processingItems.current.add(id);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('User not logged in');
+        processingItems.current.delete(id);
+        return;
+      }
+
+      // Find the item first
+      const item = items.find((item) => item.id === id);
+      if (!item) {
+        processingItems.current.delete(id);
+        return;
+      }
+
+      const newInCart = !item.inCart;
+
+      // Update in local state immediately for UI responsiveness
+      setItems((prevItems) =>
+        prevItems.map((prevItem) =>
+          prevItem.id === id ? { ...prevItem, inCart: newInCart } : prevItem
+        )
+      );
+
+      // Show toast
+      if (newInCart) {
+        playSound();
+        showAddedToCartToast(item.name);
+      } else {
+        showRemovedFromCartToast(item.name);
+      }
+
+      // Update in Supabase
+      const { error } = await supabase
+        .from('grocery')
+        .update({ in_cart: newInCart })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error(
+          '❌ Error updating cart status in database:',
+          error.message
+        );
+        // Optionally roll back local state here
+      }
+
+      // Clean up
+      setTimeout(() => {
+        processingItems.current.delete(id);
+      }, 300);
+    },
+    [items, showAddedToCartToast, showRemovedFromCartToast]
+  );
+
+  const removeItem = async (id: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      console.log('User not logged in');
       return;
     }
 
-    setLastRemovedItem(itemName);
-    setShowRemovedToast(true);
-    
-    // Reset animation values
-    removedToastOpacity.setValue(0);
-    removedToastTranslateY.setValue(-50);
-    
-    // Animate in
-    Animated.parallel([
-      Animated.timing(removedToastOpacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(removedToastTranslateY, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    
-    // Auto hide after 2 seconds
-    removedToastTimeoutRef.current = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(removedToastOpacity, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(removedToastTranslateY, {
-          toValue: -50,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setShowRemovedToast(false);
-      });
-    }, 2000);
-  }, [showRemovedToast, removedToastOpacity, removedToastTranslateY]);
+    // Remove from database
+    const { error } = await supabase
+      .from('grocery')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id); // Optional: extra safety
 
-  // Optimized toggleItemCart function with debouncing
-const toggleItemCart = useCallback(async (id: string) => {
-  if (processingItems.current.has(id)) return;
-  processingItems.current.add(id);
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    console.log("User not logged in");
-    processingItems.current.delete(id);
-    return;
-  }
-
-  // Find the item first
-  const item = items.find(item => item.id === id);
-  if (!item) {
-    processingItems.current.delete(id);
-    return;
-  }
-
-  const newInCart = !item.inCart;
-
-  // Update in local state immediately for UI responsiveness
-  setItems(prevItems =>
-    prevItems.map(prevItem =>
-      prevItem.id === id ? { ...prevItem, inCart: newInCart } : prevItem
-    )
-  );
-
-  // Show toast
-  if (newInCart) {
-     playSound();
-    showAddedToCartToast(item.name);
-     
-  } else {
-    showRemovedFromCartToast(item.name);
-  }
-
-  // Update in Supabase
-  const { error } = await supabase
-    .from('grocery')
-    .update({ in_cart: newInCart })
-    .eq('id', id)
-    .eq('user_id', user.id);
-
-  if (error) {
-    console.error('❌ Error updating cart status in database:', error.message);
-    // Optionally roll back local state here
-  }
-
-  // Clean up
-  setTimeout(() => {
-    processingItems.current.delete(id);
-  }, 300);
-}, [items, showAddedToCartToast, showRemovedFromCartToast]);
-
-
-const removeItem = async (id: string) => {
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    console.log("User not logged in");
-    return;
-  }
-
-  // Remove from database
-  const { error } = await supabase
-    .from('grocery')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id); // Optional: extra safety
-
-  if (error) {
-    console.error('❌ Failed to delete item:', error.message);
-    Alert.alert('Error', 'Failed to remove item from the database.');
-    return;
-  }
-
-  // Remove from local state
-  setItems(prevItems => prevItems.filter(item => item.id !== id));
-};
-
-
-const playSound = async () => {
-  if (soundRef.current) {
-    try {
-      await soundRef.current.replayAsync(); // plays from start
-    } catch (error) {
-      console.error('Error playing sound:', error);
+    if (error) {
+      console.error('❌ Failed to delete item:', error.message);
+      Alert.alert('Error', 'Failed to remove item from the database.');
+      return;
     }
-  }
-};
 
+    // Remove from local state
+    setItems((prevItems) => prevItems.filter((item) => item.id !== id));
+  };
+
+  const playSound = async () => {
+    if (soundRef.current) {
+      try {
+        await soundRef.current.replayAsync(); // plays from start
+      } catch (error) {
+        console.error('Error playing sound:', error);
+      }
+    }
+  };
 
   const navigateToCamera = () => {
     navigation.navigate('CameraScreen' as never);
@@ -506,8 +553,8 @@ const playSound = async () => {
     navigation.navigate('Ingredients' as never);
   };
 
-  const neededItems = items.filter(item => item.needed && !item.inCart);
-  const cartItems = items.filter(item => item.inCart);
+  const neededItems = items.filter((item) => item.needed && !item.inCart);
+  const cartItems = items.filter((item) => item.inCart);
 
   const groupItemsByCategory = (items: GroceryItem[]) => {
     return items.reduce((acc, item) => {
@@ -530,7 +577,7 @@ const playSound = async () => {
           {item.inCart && <Check size={16} color="#FFFFFF" />}
         </TouchableOpacity>
       )}
-      
+
       <TouchableOpacity
         style={styles.itemContent}
         onPress={() => toggleItemCart(item.id)}
@@ -540,7 +587,7 @@ const playSound = async () => {
           {item.name}
         </Text>
       </TouchableOpacity>
-      
+
       <TouchableOpacity
         style={styles.removeButton}
         onPress={() => removeItem(item.id)}
@@ -551,64 +598,72 @@ const playSound = async () => {
     </View>
   );
 
-  const renderItemsByCategory = (items: GroceryItem[], showCheckbox: boolean = true) => {
+  const renderItemsByCategory = (
+    items: GroceryItem[],
+    showCheckbox: boolean = true
+  ) => {
     const groupedItems = groupItemsByCategory(items);
-    
+
     return Object.entries(groupedItems).map(([category, categoryItems]) => (
       <View key={category} style={styles.categorySection}>
         <Text style={styles.categoryTitle}>{category}</Text>
-        {categoryItems.map(item => renderItem(item, showCheckbox))}
+        {categoryItems.map((item) => renderItem(item, showCheckbox))}
       </View>
     ));
   };
 
-const renderEmptyState = () => (
-  <View style={styles.emptyState}>
-    <ShoppingCart size={64} color="#D1D5DB" />
-    <Text style={styles.emptyStateTitle}>No grocery items yet</Text>
-    <Text style={styles.emptyStateText}>
-      Get started by adding ingredients from your fridge or typing in a grocery item
-    </Text>
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <ShoppingCart size={64} color="#D1D5DB" />
+      <Text style={styles.emptyStateTitle}>No grocery items yet</Text>
+      <Text style={styles.emptyStateText}>
+        Get started by adding ingredients from your fridge or typing in a
+        grocery item
+      </Text>
 
-    <View style={styles.emptyButtonContainer}>
-      <TouchableOpacity
-        style={styles.emptyActionButton}
-        onPress={navigateToCamera}
-        activeOpacity={0.7}
-      >
-        <Camera size={20} color="#059669" />
-        <Text style={styles.emptyActionButtonText}>Take Photo</Text>
-        <Text style={styles.emptyActionButtonSubtext}>Scan your fridge</Text>
-      </TouchableOpacity>
+      <View style={styles.emptyButtonContainer}>
+        <TouchableOpacity
+          style={styles.emptyActionButton}
+          onPress={navigateToCamera}
+          activeOpacity={0.7}
+        >
+          <Camera size={20} color="#059669" />
+          <Text style={styles.emptyActionButtonText}>Take Photo</Text>
+          <Text style={styles.emptyActionButtonSubtext}>Scan your fridge</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.emptyActionButton}
-        onPress={navigateToIngredients}
-        activeOpacity={0.7}
-      >
-        <List size={20} color="#059669" />
-        <Text style={styles.emptyActionButtonText}>View Ingredients</Text>
-        <Text style={styles.emptyActionButtonSubtext}>Browse your pantry</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.emptyActionButton}
+          onPress={navigateToIngredients}
+          activeOpacity={0.7}
+        >
+          <List size={20} color="#059669" />
+          <Text style={styles.emptyActionButtonText}>View Ingredients</Text>
+          <Text style={styles.emptyActionButtonSubtext}>
+            Browse your pantry
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.emptyActionButton}
-        onPress={() => setShowManualAddModal(true)}
-        activeOpacity={0.7}
-      >
-        <Plus size={20} color="#059669" />
-        <Text style={styles.emptyActionButtonText}>Type Item Manually</Text>
-        <Text style={styles.emptyActionButtonSubtext}>Add any grocery by name</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.emptyActionButton}
+          onPress={() => setShowManualAddModal(true)}
+          activeOpacity={0.7}
+        >
+          <Plus size={20} color="#059669" />
+          <Text style={styles.emptyActionButtonText}>Type Item Manually</Text>
+          <Text style={styles.emptyActionButtonSubtext}>
+            Add any grocery by name
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
-  </View>
-);
-
+  );
 
   const hasAnyItems = items.length > 0;
 
   return (
     <SafeAreaView style={styles.container}>
+      <BannerAdComponent />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Grocery List</Text>
         <Text style={styles.headerSubtitle}>
@@ -621,33 +676,43 @@ const renderEmptyState = () => (
           <TouchableOpacity
             style={[
               styles.tabButton,
-              selectedTab === 'needed' && styles.tabButtonActive
+              selectedTab === 'needed' && styles.tabButtonActive,
             ]}
             onPress={() => setSelectedTab('needed')}
             activeOpacity={0.7}
           >
-            <ShoppingCart size={20} color={selectedTab === 'needed' ? '#FFFFFF' : '#6B7280'} />
-            <Text style={[
-              styles.tabButtonText,
-              selectedTab === 'needed' && styles.tabButtonTextActive
-            ]}>
+            <ShoppingCart
+              size={20}
+              color={selectedTab === 'needed' ? '#FFFFFF' : '#6B7280'}
+            />
+            <Text
+              style={[
+                styles.tabButtonText,
+                selectedTab === 'needed' && styles.tabButtonTextActive,
+              ]}
+            >
               Need to Buy ({neededItems.length})
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[
               styles.tabButton,
-              selectedTab === 'cart' && styles.tabButtonActive
+              selectedTab === 'cart' && styles.tabButtonActive,
             ]}
             onPress={() => setSelectedTab('cart')}
             activeOpacity={0.7}
           >
-            <Check size={20} color={selectedTab === 'cart' ? '#FFFFFF' : '#6B7280'} />
-            <Text style={[
-              styles.tabButtonText,
-              selectedTab === 'cart' && styles.tabButtonTextActive
-            ]}>
+            <Check
+              size={20}
+              color={selectedTab === 'cart' ? '#FFFFFF' : '#6B7280'}
+            />
+            <Text
+              style={[
+                styles.tabButtonText,
+                selectedTab === 'cart' && styles.tabButtonTextActive,
+              ]}
+            >
               In Cart ({cartItems.length})
             </Text>
           </TouchableOpacity>
@@ -672,7 +737,7 @@ const renderEmptyState = () => (
         </View>
       )}
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -713,7 +778,7 @@ const renderEmptyState = () => (
       {/* Two Add Item Buttons */}
       {hasAnyItems && (
         <View style={styles.addButtonContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.addButton, styles.addButtonPhoto]}
             onPress={navigateToCamera}
             activeOpacity={0.7}
@@ -721,8 +786,8 @@ const renderEmptyState = () => (
             <Camera size={20} color="#FFFFFF" />
             <Text style={styles.addButtonText}>Add Item (From Photo)</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.addButton, styles.addButtonManual]}
             onPress={() => setShowManualAddModal(true)}
             activeOpacity={0.7}
@@ -752,7 +817,7 @@ const renderEmptyState = () => (
                 <X size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.modalContent}>
               <Text style={styles.inputLabel}>Item Name</Text>
               <TextInput
@@ -766,7 +831,7 @@ const renderEmptyState = () => (
                 onSubmitEditing={addManualItem}
               />
             </View>
-            
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
@@ -778,7 +843,7 @@ const renderEmptyState = () => (
               >
                 <Text style={styles.modalCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.modalAddButton}
                 onPress={addManualItem}
@@ -1186,4 +1251,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// working version here. 
+// working version here.

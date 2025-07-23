@@ -11,13 +11,21 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Clock, Users, Flame, Star, RefreshCw, Heart } from 'lucide-react-native';
+import {
+  Clock,
+  Users,
+  Flame,
+  Star,
+  RefreshCw,
+  Heart,
+} from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'expo-router';
 import { styles } from '../styles/Recipes.styles';
 import LottieView from 'lottie-react-native';
 import FastImage from 'expo-fast-image';
 import { useRequireAuth } from '../hooks/useRequireAuth';
+import BannerAdComponent from '../components/BannerAdComponent';
 
 interface Recipe {
   id: string;
@@ -37,7 +45,9 @@ export default function RecipesTab() {
   useRequireAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'available'>('available');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'available'>(
+    'available'
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
@@ -108,7 +118,9 @@ export default function RecipesTab() {
     if (error) {
       console.error('❌ Error fetching recipes:', error);
     } else {
-      const filtered = (data ?? []).filter((r) => r.recipe_name && r.recipe_name.trim().length > 0);
+      const filtered = (data ?? []).filter(
+        (r) => r.recipe_name && r.recipe_name.trim().length > 0
+      );
       setRecipes(filtered);
     }
 
@@ -185,7 +197,9 @@ export default function RecipesTab() {
 
         <View style={styles.recipeContent}>
           <View style={styles.recipeHeader}>
-            <Text style={styles.recipeTitle}>{recipe.recipe_name || 'Unnamed Recipe'}</Text>
+            <Text style={styles.recipeTitle}>
+              {recipe.recipe_name || 'Unnamed Recipe'}
+            </Text>
             <View style={styles.ratingContainer}>
               <Star size={16} color="#F59E0B" fill="#F59E0B" />
               <Text style={styles.rating}>{recipe.rating ?? 0}</Text>
@@ -207,27 +221,34 @@ export default function RecipesTab() {
             </View>
           </View>
 
-          {recipe.availableIngredients !== undefined && recipe.totalIngredients !== undefined && (
-            <View style={styles.ingredientStatus}>
-              <Text style={styles.ingredientText}>
-                {recipe.availableIngredients}/{recipe.totalIngredients} ingredients available
-              </Text>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      width: `${
-                        (recipe.availableIngredients / recipe.totalIngredients) * 100 || 0
-                      }%`,
-                    },
-                  ]}
-                />
+          {recipe.availableIngredients !== undefined &&
+            recipe.totalIngredients !== undefined && (
+              <View style={styles.ingredientStatus}>
+                <Text style={styles.ingredientText}>
+                  {recipe.availableIngredients}/{recipe.totalIngredients}{' '}
+                  ingredients available
+                </Text>
+                <View style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${
+                          (recipe.availableIngredients /
+                            recipe.totalIngredients) *
+                            100 || 0
+                        }%`,
+                      },
+                    ]}
+                  />
+                </View>
               </View>
-            </View>
-          )}
+            )}
 
-          <TouchableOpacity style={{ marginTop: 10 }} onPress={() => handleFavorite(recipe.id)}>
+          <TouchableOpacity
+            style={{ marginTop: 10 }}
+            onPress={() => handleFavorite(recipe.id)}
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Heart size={16} color="#EF4444" />
               <Text style={{ marginLeft: 6, color: '#EF4444' }}>
@@ -242,6 +263,8 @@ export default function RecipesTab() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <BannerAdComponent />
+
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <Text style={styles.headerTitle}>Recipe Suggestions</Text>
@@ -273,7 +296,10 @@ export default function RecipesTab() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, selectedFilter === 'all' && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            selectedFilter === 'all' && styles.filterButtonActive,
+          ]}
           onPress={() => setSelectedFilter('all')}
         >
           <Text
@@ -301,16 +327,24 @@ export default function RecipesTab() {
         </View>
       ) : filteredRecipes.length === 0 ? (
         <View style={styles.center}>
-          <MaterialCommunityIcons name="fridge-outline" size={64} color="#888" />
+          <MaterialCommunityIcons
+            name="fridge-outline"
+            size={64}
+            color="#888"
+          />
           <Text style={styles.messageTitle}>No recipes found.</Text>
-          <Text style={styles.messageSubtitle}>{"Try scanning\nyour fridge to add some!"}</Text>
+          <Text style={styles.messageSubtitle}>
+            {'Try scanning\nyour fridge to add some!'}
+          </Text>
         </View>
       ) : (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         >
           {filteredRecipes.map(renderRecipeCard)}
         </ScrollView>

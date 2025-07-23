@@ -19,6 +19,7 @@ import ToolsSection from '../components/InstructionsScreenComponents/ToolsSectio
 import InstructionsSection from '../components/InstructionsScreenComponents/InstructionsSection';
 import { parseInstructions } from '../components/InstructionsScreenComponents/InstructionParser';
 import { Recipe } from '../components/InstructionsScreenComponents/types';
+import BannerAdComponent from '../components/BannerAdComponent';
 
 export default function InstructionsScreen() {
   const params = useLocalSearchParams();
@@ -28,7 +29,11 @@ export default function InstructionsScreen() {
   const [rating, setRating] = useState<number | null>(null);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
-  const { ingredients: aiIngredients, tools, steps } = parseInstructions(recipe.instructions || '');
+  const {
+    ingredients: aiIngredients,
+    tools,
+    steps,
+  } = parseInstructions(recipe.instructions || '');
   const displayIngredients = recipe.ingredients || aiIngredients;
 
   const handleRecipeTried = async () => {
@@ -109,6 +114,7 @@ export default function InstructionsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <BannerAdComponent />
       <BackHeader />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -130,14 +136,18 @@ export default function InstructionsScreen() {
           disabled={tried}
         >
           <Text style={styles.triedButtonText}>
-            {tried ? 'Awesome! Thanks for trying this recipe!' : 'Did you try this recipe?'}
+            {tried
+              ? 'Awesome! Thanks for trying this recipe!'
+              : 'Did you try this recipe?'}
           </Text>
         </TouchableOpacity>
 
         {tried && (
           <View style={styles.ratingSection}>
             <Text style={styles.ratingPrompt}>
-              {ratingSubmitted ? 'You rated this recipe:' : 'How would you rate this recipe?'}
+              {ratingSubmitted
+                ? 'You rated this recipe:'
+                : 'How would you rate this recipe?'}
             </Text>
             {renderStars()}
           </View>
