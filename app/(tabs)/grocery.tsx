@@ -1,25 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Animated,
-  TextInput,
-  Modal,
-} from 'react-native';
+import { Text, StyleSheet, ScrollView, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Plus,
-  Check,
-  ShoppingCart,
-  Trash2,
-  Camera,
-  List,
-  X,
-} from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams } from 'expo-router';
 import { supabase } from '../lib/supabase';
@@ -27,6 +8,17 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useFocusEffect } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import BannerAdComponent from '../components/BannerAdComponent';
+
+// Import new components
+import { GroceryTabs } from '../components/GroceryScreenComponents/GroceryTabs';
+import { CategorySection } from '../components/GroceryScreenComponents/CategorySection';
+import { EmptyState } from '../components/GroceryScreenComponents/EmptyState';
+import { AddItemButtons } from '../components/GroceryScreenComponents/AddItemButtons';
+import { ManualAddModal } from '../components/GroceryScreenComponents/ManualAddModal';
+import { ToastNotification } from '../components/GroceryScreenComponents/ToastNotification';
+import { InstructionText } from '../components/GroceryScreenComponents/InstructionText';
+
+import { styles } from '../styles/Grocery.styles';
 
 interface GroceryItem {
   id: string;
@@ -37,7 +29,7 @@ interface GroceryItem {
 }
 
 export default function GroceryTab() {
-  useRequireAuth(); // Ensure the user is authenticated before accessing this screen
+  useRequireAuth();
 
   const [items, setItems] = useState<GroceryItem[]>([]);
   const [selectedTab, setSelectedTab] = useState<'needed' | 'cart'>('needed');
@@ -82,7 +74,7 @@ export default function GroceryTab() {
         });
 
         const { sound } = await Audio.Sound.createAsync(
-          require('../../assets/sounds/cooking-bell.wav') // update path if needed
+          require('../../assets/sounds/cooking-bell.wav')
         );
 
         soundRef.current = sound;
@@ -110,6 +102,68 @@ export default function GroceryTab() {
     };
   }, [newIngredients]);
 
+  // Utility functions
+  const categorizeIngredient = (ingredient: string): string => {
+    const lowerIngredient = ingredient.toLowerCase();
+
+    if (
+      lowerIngredient.includes('apple') ||
+      lowerIngredient.includes('banana') ||
+      lowerIngredient.includes('orange') ||
+      lowerIngredient.includes('tomato') ||
+      lowerIngredient.includes('onion') ||
+      lowerIngredient.includes('carrot') ||
+      lowerIngredient.includes('potato') ||
+      lowerIngredient.includes('lettuce')
+    ) {
+      return 'Produce';
+    }
+
+    if (
+      lowerIngredient.includes('milk') ||
+      lowerIngredient.includes('cheese') ||
+      lowerIngredient.includes('yogurt') ||
+      lowerIngredient.includes('butter')
+    ) {
+      return 'Dairy';
+    }
+
+    if (
+      lowerIngredient.includes('chicken') ||
+      lowerIngredient.includes('beef') ||
+      lowerIngredient.includes('fish') ||
+      lowerIngredient.includes('salmon') ||
+      lowerIngredient.includes('pork') ||
+      lowerIngredient.includes('turkey')
+    ) {
+      return 'Meat & Seafood';
+    }
+
+    if (
+      lowerIngredient.includes('rice') ||
+      lowerIngredient.includes('pasta') ||
+      lowerIngredient.includes('flour') ||
+      lowerIngredient.includes('oil') ||
+      lowerIngredient.includes('salt') ||
+      lowerIngredient.includes('pepper')
+    ) {
+      return 'Pantry';
+    }
+
+    return 'Other';
+  };
+
+  const groupItemsByCategory = (items: GroceryItem[]) => {
+    return items.reduce((acc, item) => {
+      if (!acc[item.category]) {
+        acc[item.category] = [];
+      }
+      acc[item.category].push(item);
+      return acc;
+    }, {} as Record<string, GroceryItem[]>);
+  };
+
+  // Data fetching
   const fetchGroceryItemsFromDatabase = async () => {
     const {
       data: { user },
@@ -143,7 +197,7 @@ export default function GroceryTab() {
     }
   };
 
-  // Function to add new ingredients to grocery list
+  // Item management functions
   const addNewIngredientsToGroceryList = (ingredients: string[]) => {
     const newItems: GroceryItem[] = ingredients.map((ingredient, index) => ({
       id: `new-${Date.now()}-${index}`,
@@ -154,7 +208,6 @@ export default function GroceryTab() {
     }));
 
     setItems((prevItems) => {
-      // Filter out duplicates based on name (case-insensitive)
       const existingNames = new Set(
         prevItems.map((item) => item.name.toLowerCase())
       );
@@ -176,7 +229,6 @@ export default function GroceryTab() {
     });
   };
 
-  // Function to add a single item manually
   const addManualItem = async () => {
     const trimmedName = newItemName.trim();
     if (trimmedName === '') {
@@ -231,86 +283,38 @@ export default function GroceryTab() {
     );
   };
 
-  // Simple categorization function
-  const categorizeIngredient = (ingredient: string): string => {
-    const lowerIngredient = ingredient.toLowerCase();
+  const removeItem = async (id: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    // Produce
-    if (
-      lowerIngredient.includes('apple') ||
-      lowerIngredient.includes('banana') ||
-      lowerIngredient.includes('orange') ||
-      lowerIngredient.includes('tomato') ||
-      lowerIngredient.includes('onion') ||
-      lowerIngredient.includes('carrot') ||
-      lowerIngredient.includes('potato') ||
-      lowerIngredient.includes('lettuce')
-    ) {
-      return 'Produce';
+    if (!user) {
+      console.log('User not logged in');
+      return;
     }
 
-    // Dairy
-    if (
-      lowerIngredient.includes('milk') ||
-      lowerIngredient.includes('cheese') ||
-      lowerIngredient.includes('yogurt') ||
-      lowerIngredient.includes('butter')
-    ) {
-      return 'Dairy';
+    const { error } = await supabase
+      .from('grocery')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('❌ Failed to delete item:', error.message);
+      Alert.alert('Error', 'Failed to remove item from the database.');
+      return;
     }
 
-    // Meat & Seafood
-    if (
-      lowerIngredient.includes('chicken') ||
-      lowerIngredient.includes('beef') ||
-      lowerIngredient.includes('fish') ||
-      lowerIngredient.includes('salmon') ||
-      lowerIngredient.includes('pork') ||
-      lowerIngredient.includes('turkey')
-    ) {
-      return 'Meat & Seafood';
-    }
-
-    // Pantry
-    if (
-      lowerIngredient.includes('rice') ||
-      lowerIngredient.includes('pasta') ||
-      lowerIngredient.includes('flour') ||
-      lowerIngredient.includes('oil') ||
-      lowerIngredient.includes('salt') ||
-      lowerIngredient.includes('pepper')
-    ) {
-      return 'Pantry';
-    }
-
-    return 'Other';
+    setItems((prevItems) => prevItems.filter((item) => item.id !== id));
   };
 
-  useEffect(() => {
-    // fetchGroceryItemsFromDatabase();
-  }, []);
-
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current) {
-        clearTimeout(toastTimeoutRef.current);
-      }
-      if (removedToastTimeoutRef.current) {
-        clearTimeout(removedToastTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Optimized toast function for adding to cart
+  // Toast functions
   const showAddedToCartToast = useCallback(
     (itemName: string) => {
-      // Clear existing timeout
       if (toastTimeoutRef.current) {
         clearTimeout(toastTimeoutRef.current);
       }
 
-      // If toast is already showing, just update the item name
       if (showCartToast) {
         setLastAddedItem(itemName);
         toastTimeoutRef.current = setTimeout(() => {
@@ -335,11 +339,9 @@ export default function GroceryTab() {
       setLastAddedItem(itemName);
       setShowCartToast(true);
 
-      // Reset animation values
       toastOpacity.setValue(0);
       toastTranslateY.setValue(-50);
 
-      // Animate in
       Animated.parallel([
         Animated.timing(toastOpacity, {
           toValue: 1,
@@ -353,7 +355,6 @@ export default function GroceryTab() {
         }),
       ]).start();
 
-      // Auto hide after 2 seconds
       toastTimeoutRef.current = setTimeout(() => {
         Animated.parallel([
           Animated.timing(toastOpacity, {
@@ -374,15 +375,12 @@ export default function GroceryTab() {
     [showCartToast, toastOpacity, toastTranslateY]
   );
 
-  // Optimized toast function for removing from cart
   const showRemovedFromCartToast = useCallback(
     (itemName: string) => {
-      // Clear existing timeout
       if (removedToastTimeoutRef.current) {
         clearTimeout(removedToastTimeoutRef.current);
       }
 
-      // If toast is already showing, just update the item name
       if (showRemovedToast) {
         setLastRemovedItem(itemName);
         removedToastTimeoutRef.current = setTimeout(() => {
@@ -407,11 +405,9 @@ export default function GroceryTab() {
       setLastRemovedItem(itemName);
       setShowRemovedToast(true);
 
-      // Reset animation values
       removedToastOpacity.setValue(0);
       removedToastTranslateY.setValue(-50);
 
-      // Animate in
       Animated.parallel([
         Animated.timing(removedToastOpacity, {
           toValue: 1,
@@ -425,7 +421,6 @@ export default function GroceryTab() {
         }),
       ]).start();
 
-      // Auto hide after 2 seconds
       removedToastTimeoutRef.current = setTimeout(() => {
         Animated.parallel([
           Animated.timing(removedToastOpacity, {
@@ -446,7 +441,6 @@ export default function GroceryTab() {
     [showRemovedToast, removedToastOpacity, removedToastTranslateY]
   );
 
-  // Optimized toggleItemCart function with debouncing
   const toggleItemCart = useCallback(
     async (id: string) => {
       if (processingItems.current.has(id)) return;
@@ -461,7 +455,6 @@ export default function GroceryTab() {
         return;
       }
 
-      // Find the item first
       const item = items.find((item) => item.id === id);
       if (!item) {
         processingItems.current.delete(id);
@@ -470,14 +463,12 @@ export default function GroceryTab() {
 
       const newInCart = !item.inCart;
 
-      // Update in local state immediately for UI responsiveness
       setItems((prevItems) =>
         prevItems.map((prevItem) =>
           prevItem.id === id ? { ...prevItem, inCart: newInCart } : prevItem
         )
       );
 
-      // Show toast
       if (newInCart) {
         playSound();
         showAddedToCartToast(item.name);
@@ -485,7 +476,6 @@ export default function GroceryTab() {
         showRemovedFromCartToast(item.name);
       }
 
-      // Update in Supabase
       const { error } = await supabase
         .from('grocery')
         .update({ in_cart: newInCart })
@@ -497,10 +487,8 @@ export default function GroceryTab() {
           '❌ Error updating cart status in database:',
           error.message
         );
-        // Optionally roll back local state here
       }
 
-      // Clean up
       setTimeout(() => {
         processingItems.current.delete(id);
       }, 300);
@@ -508,43 +496,17 @@ export default function GroceryTab() {
     [items, showAddedToCartToast, showRemovedFromCartToast]
   );
 
-  const removeItem = async (id: string) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      console.log('User not logged in');
-      return;
-    }
-
-    // Remove from database
-    const { error } = await supabase
-      .from('grocery')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id); // Optional: extra safety
-
-    if (error) {
-      console.error('❌ Failed to delete item:', error.message);
-      Alert.alert('Error', 'Failed to remove item from the database.');
-      return;
-    }
-
-    // Remove from local state
-    setItems((prevItems) => prevItems.filter((item) => item.id !== id));
-  };
-
   const playSound = async () => {
     if (soundRef.current) {
       try {
-        await soundRef.current.replayAsync(); // plays from start
+        await soundRef.current.replayAsync();
       } catch (error) {
         console.error('Error playing sound:', error);
       }
     }
   };
 
+  // Navigation functions
   const navigateToCamera = () => {
     navigation.navigate('CameraScreen' as never);
   };
@@ -553,51 +515,24 @@ export default function GroceryTab() {
     navigation.navigate('Ingredients' as never);
   };
 
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+      if (removedToastTimeoutRef.current) {
+        clearTimeout(removedToastTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Computed values
   const neededItems = items.filter((item) => item.needed && !item.inCart);
   const cartItems = items.filter((item) => item.inCart);
+  const hasAnyItems = items.length > 0;
 
-  const groupItemsByCategory = (items: GroceryItem[]) => {
-    return items.reduce((acc, item) => {
-      if (!acc[item.category]) {
-        acc[item.category] = [];
-      }
-      acc[item.category].push(item);
-      return acc;
-    }, {} as Record<string, GroceryItem[]>);
-  };
-
-  const renderItem = (item: GroceryItem, showCheckbox: boolean = true) => (
-    <View key={item.id} style={styles.groceryItem}>
-      {showCheckbox && (
-        <TouchableOpacity
-          style={[styles.checkbox, item.inCart && styles.checkboxChecked]}
-          onPress={() => toggleItemCart(item.id)}
-          activeOpacity={0.7}
-        >
-          {item.inCart && <Check size={16} color="#FFFFFF" />}
-        </TouchableOpacity>
-      )}
-
-      <TouchableOpacity
-        style={styles.itemContent}
-        onPress={() => toggleItemCart(item.id)}
-        activeOpacity={0.7}
-      >
-        <Text style={[styles.itemName, item.inCart && styles.itemNameChecked]}>
-          {item.name}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => removeItem(item.id)}
-        activeOpacity={0.7}
-      >
-        <Trash2 size={16} color="#EF4444" />
-      </TouchableOpacity>
-    </View>
-  );
-
+  // Render functions
   const renderItemsByCategory = (
     items: GroceryItem[],
     showCheckbox: boolean = true
@@ -605,61 +540,16 @@ export default function GroceryTab() {
     const groupedItems = groupItemsByCategory(items);
 
     return Object.entries(groupedItems).map(([category, categoryItems]) => (
-      <View key={category} style={styles.categorySection}>
-        <Text style={styles.categoryTitle}>{category}</Text>
-        {categoryItems.map((item) => renderItem(item, showCheckbox))}
-      </View>
+      <CategorySection
+        key={category}
+        category={category}
+        items={categoryItems}
+        showCheckbox={showCheckbox}
+        onToggleCart={toggleItemCart}
+        onRemove={removeItem}
+      />
     ));
   };
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <ShoppingCart size={64} color="#D1D5DB" />
-      <Text style={styles.emptyStateTitle}>No grocery items yet</Text>
-      <Text style={styles.emptyStateText}>
-        Get started by adding ingredients from your fridge or typing in a
-        grocery item
-      </Text>
-
-      <View style={styles.emptyButtonContainer}>
-        <TouchableOpacity
-          style={styles.emptyActionButton}
-          onPress={navigateToCamera}
-          activeOpacity={0.7}
-        >
-          <Camera size={20} color="#059669" />
-          <Text style={styles.emptyActionButtonText}>Take Photo</Text>
-          <Text style={styles.emptyActionButtonSubtext}>Scan your fridge</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.emptyActionButton}
-          onPress={navigateToIngredients}
-          activeOpacity={0.7}
-        >
-          <List size={20} color="#059669" />
-          <Text style={styles.emptyActionButtonText}>View Ingredients</Text>
-          <Text style={styles.emptyActionButtonSubtext}>
-            Browse your pantry
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.emptyActionButton}
-          onPress={() => setShowManualAddModal(true)}
-          activeOpacity={0.7}
-        >
-          <Plus size={20} color="#059669" />
-          <Text style={styles.emptyActionButtonText}>Type Item Manually</Text>
-          <Text style={styles.emptyActionButtonSubtext}>
-            Add any grocery by name
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const hasAnyItems = items.length > 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -672,69 +562,21 @@ export default function GroceryTab() {
       </View>
 
       {hasAnyItems && (
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[
-              styles.tabButton,
-              selectedTab === 'needed' && styles.tabButtonActive,
-            ]}
-            onPress={() => setSelectedTab('needed')}
-            activeOpacity={0.7}
-          >
-            <ShoppingCart
-              size={20}
-              color={selectedTab === 'needed' ? '#FFFFFF' : '#6B7280'}
-            />
-            <Text
-              style={[
-                styles.tabButtonText,
-                selectedTab === 'needed' && styles.tabButtonTextActive,
-              ]}
-            >
-              Need to Buy ({neededItems.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.tabButton,
-              selectedTab === 'cart' && styles.tabButtonActive,
-            ]}
-            onPress={() => setSelectedTab('cart')}
-            activeOpacity={0.7}
-          >
-            <Check
-              size={20}
-              color={selectedTab === 'cart' ? '#FFFFFF' : '#6B7280'}
-            />
-            <Text
-              style={[
-                styles.tabButtonText,
-                selectedTab === 'cart' && styles.tabButtonTextActive,
-              ]}
-            >
-              In Cart ({cartItems.length})
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <GroceryTabs
+          selectedTab={selectedTab}
+          onTabChange={setSelectedTab}
+          neededCount={neededItems.length}
+          cartCount={cartItems.length}
+        />
       )}
 
-      {/* Helpful instruction text */}
+      {/* Instruction text */}
       {hasAnyItems && selectedTab === 'needed' && neededItems.length > 0 && (
-        <View style={styles.instructionContainer}>
-          <Text style={styles.instructionText}>
-            💡 Tap on any item or checkbox to add it to your cart
-          </Text>
-        </View>
+        <InstructionText type="needed" />
       )}
 
-      {/* Helpful instruction text for cart */}
       {hasAnyItems && selectedTab === 'cart' && cartItems.length > 0 && (
-        <View style={styles.instructionContainer}>
-          <Text style={styles.instructionText}>
-            ↩️ Tap on any item to move it back to your shopping list
-          </Text>
-        </View>
+        <InstructionText type="cart" />
       )}
 
       <ScrollView
@@ -743,19 +585,23 @@ export default function GroceryTab() {
         showsVerticalScrollIndicator={false}
       >
         {!hasAnyItems ? (
-          renderEmptyState()
+          <EmptyState
+            type="initial"
+            onCameraPress={navigateToCamera}
+            onIngredientsPress={navigateToIngredients}
+            onManualAddPress={() => setShowManualAddModal(true)}
+          />
         ) : selectedTab === 'needed' ? (
           <>
             {neededItems.length > 0 ? (
               renderItemsByCategory(neededItems, true)
             ) : (
-              <View style={styles.emptyState}>
-                <ShoppingCart size={64} color="#D1D5DB" />
-                <Text style={styles.emptyStateTitle}>All set!</Text>
-                <Text style={styles.emptyStateText}>
-                  You have all the ingredients you need
-                </Text>
-              </View>
+              <EmptyState
+                type="needed"
+                onCameraPress={navigateToCamera}
+                onIngredientsPress={navigateToIngredients}
+                onManualAddPress={() => setShowManualAddModal(true)}
+              />
             )}
           </>
         ) : (
@@ -763,492 +609,50 @@ export default function GroceryTab() {
             {cartItems.length > 0 ? (
               renderItemsByCategory(cartItems, true)
             ) : (
-              <View style={styles.emptyState}>
-                <Check size={64} color="#D1D5DB" />
-                <Text style={styles.emptyStateTitle}>Cart is empty</Text>
-                <Text style={styles.emptyStateText}>
-                  Add items from your needed list
-                </Text>
-              </View>
+              <EmptyState
+                type="cart"
+                onCameraPress={navigateToCamera}
+                onIngredientsPress={navigateToIngredients}
+                onManualAddPress={() => setShowManualAddModal(true)}
+              />
             )}
           </>
         )}
       </ScrollView>
 
-      {/* Two Add Item Buttons */}
+      {/* Add Item Buttons */}
       {hasAnyItems && (
-        <View style={styles.addButtonContainer}>
-          <TouchableOpacity
-            style={[styles.addButton, styles.addButtonPhoto]}
-            onPress={navigateToCamera}
-            activeOpacity={0.7}
-          >
-            <Camera size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Item (From Photo)</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.addButton, styles.addButtonManual]}
-            onPress={() => setShowManualAddModal(true)}
-            activeOpacity={0.7}
-          >
-            <Plus size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Item (Manually Type)</Text>
-          </TouchableOpacity>
-        </View>
+        <AddItemButtons
+          onCameraPress={navigateToCamera}
+          onManualAddPress={() => setShowManualAddModal(true)}
+        />
       )}
 
       {/* Manual Add Item Modal */}
-      <Modal
+      <ManualAddModal
         visible={showManualAddModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowManualAddModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Item Manually</Text>
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={() => setShowManualAddModal(false)}
-                activeOpacity={0.7}
-              >
-                <X size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
+        newItemName={newItemName}
+        onClose={() => setShowManualAddModal(false)}
+        onItemNameChange={setNewItemName}
+        onAddItem={addManualItem}
+      />
 
-            <View style={styles.modalContent}>
-              <Text style={styles.inputLabel}>Item Name</Text>
-              <TextInput
-                style={styles.textInput}
-                value={newItemName}
-                onChangeText={setNewItemName}
-                placeholder="Enter item name (e.g., Bananas, Milk, Bread)"
-                placeholderTextColor="#9CA3AF"
-                autoFocus={true}
-                returnKeyType="done"
-                onSubmitEditing={addManualItem}
-              />
-            </View>
+      {/* Toast Notifications */}
+      <ToastNotification
+        visible={showCartToast}
+        type="added"
+        itemName={lastAddedItem}
+        opacity={toastOpacity}
+        translateY={toastTranslateY}
+      />
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => {
-                  setShowManualAddModal(false);
-                  setNewItemName('');
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalAddButton}
-                onPress={addManualItem}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalAddButtonText}>Add Item</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Animated Toast Notification - Added to Cart */}
-      {showCartToast && (
-        <Animated.View
-          style={[
-            styles.toastContainer,
-            {
-              opacity: toastOpacity,
-              transform: [{ translateY: toastTranslateY }],
-            },
-          ]}
-        >
-          <View style={styles.toast}>
-            <View style={styles.toastIcon}>
-              <Check size={20} color="#FFFFFF" />
-            </View>
-            <View style={styles.toastContent}>
-              <Text style={styles.toastTitle}>Added to Cart!</Text>
-              <Text style={styles.toastMessage} numberOfLines={1}>
-                {lastAddedItem}
-              </Text>
-            </View>
-          </View>
-        </Animated.View>
-      )}
-
-      {/* Animated Toast Notification - Removed from Cart */}
-      {showRemovedToast && (
-        <Animated.View
-          style={[
-            styles.toastContainer,
-            {
-              opacity: removedToastOpacity,
-              transform: [{ translateY: removedToastTranslateY }],
-            },
-          ]}
-        >
-          <View style={[styles.toast, styles.toastRemoved]}>
-            <View style={[styles.toastIcon, styles.toastIconRemoved]}>
-              <ShoppingCart size={20} color="#FFFFFF" />
-            </View>
-            <View style={styles.toastContent}>
-              <Text style={styles.toastTitle}>Back to Shopping List!</Text>
-              <Text style={styles.toastMessage} numberOfLines={1}>
-                {lastRemovedItem}
-              </Text>
-            </View>
-          </View>
-        </Animated.View>
-      )}
+      <ToastNotification
+        visible={showRemovedToast}
+        type="removed"
+        itemName={lastRemovedItem}
+        opacity={removedToastOpacity}
+        translateY={removedToastTranslateY}
+      />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  header: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    gap: 12,
-  },
-  tabButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    gap: 8,
-  },
-  tabButtonActive: {
-    backgroundColor: '#059669',
-  },
-  tabButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#6B7280',
-  },
-  tabButtonTextActive: {
-    color: '#FFFFFF',
-  },
-  instructionContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    backgroundColor: '#F0F9FF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0F2FE',
-  },
-  instructionText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#0369A1',
-    textAlign: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 120,
-  },
-  categorySection: {
-    marginBottom: 24,
-  },
-  categoryTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  groceryItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    margin: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: '#059669',
-    borderColor: '#059669',
-  },
-  itemContent: {
-    flex: 1,
-    paddingVertical: 16,
-  },
-  itemName: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-  },
-  itemNameChecked: {
-    textDecorationLine: 'line-through',
-    color: '#6B7280',
-  },
-  removeButton: {
-    padding: 16,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 64,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 32,
-    paddingHorizontal: 24,
-    lineHeight: 24,
-  },
-  emptyButtonContainer: {
-    width: '100%',
-    paddingHorizontal: 24,
-    gap: 16,
-  },
-  emptyActionButton: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  emptyActionButtonText: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginLeft: 16,
-  },
-  emptyActionButtonSubtext: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginLeft: 16,
-  },
-  addButtonContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    gap: 12,
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-  },
-  addButtonPhoto: {
-    backgroundColor: '#059669',
-  },
-  addButtonManual: {
-    backgroundColor: '#3B82F6',
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#FFFFFF',
-  },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  modalContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-  },
-  modalCloseButton: {
-    padding: 4,
-  },
-  modalContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  textInput: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#111827',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    gap: 12,
-  },
-  modalCancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    alignItems: 'center',
-  },
-  modalCancelButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#6B7280',
-  },
-  modalAddButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#3B82F6',
-    alignItems: 'center',
-  },
-  modalAddButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#FFFFFF',
-  },
-  // Toast Animation Styles
-  toastContainer: {
-    position: 'absolute',
-    top: 100,
-    left: 24,
-    right: 24,
-    zIndex: 1000,
-  },
-  toast: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#059669',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  toastIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  toastContent: {
-    flex: 1,
-  },
-  toastTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  toastMessage: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  // Removed from cart toast styles
-  toastRemoved: {
-    backgroundColor: '#DC2626',
-  },
-  toastIconRemoved: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-});
-
-// working version here.
