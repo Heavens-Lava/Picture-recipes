@@ -345,4 +345,25 @@ export const styles = StyleSheet.create({
     color: '#10B981', // green for price
     marginTop: 2,
   },
+  priceCalcButton: {
+    backgroundColor: '#4CAF50',
+    padding: 14,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+
+  priceCalcButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

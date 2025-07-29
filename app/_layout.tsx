@@ -39,12 +39,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.container}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="Login"/>
-        <Stack.Screen name="Signup"/>
-        <Stack.Screen name="AccountCreatedSuccessfully"/>
+        <Stack.Screen name="Login" />
+        <Stack.Screen name="Signup" />
+        <Stack.Screen name="AccountCreatedSuccessfully" />
         <Stack.Screen name="+not-found" />
         <Stack.Screen name="CreateAccount" options={{ headerShown: false }} />
-        <Stack.Screen name="FullVersionScreen" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="FullVersionScreen"
+          options={{ headerShown: false }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </GestureHandlerRootView>

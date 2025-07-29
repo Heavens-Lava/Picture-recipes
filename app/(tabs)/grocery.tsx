@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Text, StyleSheet, ScrollView, Alert, Animated } from 'react-native';
+import {
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Animated,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams } from 'expo-router';
@@ -7,7 +14,7 @@ import { supabase } from '../lib/supabase';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useFocusEffect } from '@react-navigation/native';
 import { Audio } from 'expo-av';
-import BannerAdComponent from '../components/BannerAdComponent';
+// import BannerAdComponent from '../components/BannerAdComponent';
 
 // Import new components
 import { GroceryTabs } from '../components/GroceryScreenComponents/GroceryTabs';
@@ -17,6 +24,8 @@ import { AddItemButtons } from '../components/GroceryScreenComponents/AddItemBut
 import { ManualAddModal } from '../components/GroceryScreenComponents/ManualAddModal';
 import { ToastNotification } from '../components/GroceryScreenComponents/ToastNotification';
 import { InstructionText } from '../components/GroceryScreenComponents/InstructionText';
+import { View } from 'react-native';
+import { router } from 'expo-router';
 
 import { styles } from '../styles/Grocery.styles';
 
@@ -620,12 +629,22 @@ export default function GroceryTab() {
         )}
       </ScrollView>
 
-      {/* Add Item Buttons */}
       {hasAnyItems && (
-        <AddItemButtons
-          onCameraPress={navigateToCamera}
-          onManualAddPress={() => setShowManualAddModal(true)}
-        />
+        <>
+          <AddItemButtons
+            onCameraPress={navigateToCamera}
+            onManualAddPress={() => setShowManualAddModal(true)}
+          />
+
+          <TouchableOpacity
+            style={styles.priceCalcButton}
+            onPress={() => router.push('/othertabs/CalculatePrice')}
+          >
+            <Text style={styles.priceCalcButtonText}>
+              🧮 Calculate Total Price
+            </Text>
+          </TouchableOpacity>
+        </>
       )}
 
       {/* Manual Add Item Modal */}
