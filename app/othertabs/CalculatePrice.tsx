@@ -2,26 +2,35 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   StyleSheet,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth'; // adjust if your auth hook is different
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
 
 const CalculatePrice = () => {
+  const [session, setSession] = useState<any>(null);
   const [inCartItems, setInCartItems] = useState<any[]>([]);
   const [needToBuyItems, setNeedToBuyItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { session } = useAuth(); // make sure this returns the current user session
+
+  useEffect(() => {
+    const getSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) {
+        setSession(data.session);
+      } else {
+        router.replace('../othertabs/CreateAccount');
+      }
+    };
+    getSession();
+  }, []);
 
   useEffect(() => {
     const fetchGroceryData = async () => {
       if (!session?.user?.id) return;
-
       setLoading(true);
       const { data, error } = await supabase
         .from('grocery')
@@ -41,7 +50,6 @@ const CalculatePrice = () => {
       setNeedToBuyItems(toBuy);
       setLoading(false);
     };
-
     fetchGroceryData();
   }, [session]);
 
@@ -51,26 +59,34 @@ const CalculatePrice = () => {
       0
     );
 
-  const renderSection = (title: string, data: any[]) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+  const renderSection = (
+    title: string,
+    icon: string,
+    data: any[],
+    color: string
+  ) => (
+    <View style={[styles.section, { borderColor: color }]}>
+      <Text style={[styles.sectionTitle, { color }]}>
+        <Text>{icon} </Text>
+        <Text>{title}</Text>
+      </Text>
       {data.length === 0 ? (
         <Text style={styles.emptyText}>No items found.</Text>
       ) : (
         <>
           {data.map((item) => (
-            <View key={item.id} style={styles.itemRow}>
-              <Text style={styles.itemText}>
-                {item.name} x{item.quantity || 1}
+            <View key={item.id} style={styles.itemCard}>
+              <Text style={styles.itemName}>
+                {item.ingredient_name} x{item.quantity || 1}
               </Text>
-              <Text style={styles.itemText}>
+              <Text style={styles.itemPrice}>
                 ${((item.quantity || 1) * (item.price || 0)).toFixed(2)}
               </Text>
             </View>
           ))}
           <View style={styles.totalRow}>
-            <Text style={styles.totalText}>Total:</Text>
-            <Text style={styles.totalText}>
+            <Text style={[styles.totalText, { color }]}>Total:</Text>
+            <Text style={[styles.totalText, { color }]}>
               ${calculateTotal(data).toFixed(2)}
             </Text>
           </View>
@@ -82,21 +98,27 @@ const CalculatePrice = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#777" />
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={{ marginTop: 10, fontSize: 16, color: '#666' }}>
+          Loading your grocery list…
+        </Text>
       </View>
     );
   }
 
   return (
     <ScrollView style={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.backButton}
+        activeOpacity={0.7}
+      >
         <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
-
       <Text style={styles.heading}>🧾 Grocery Price Estimate</Text>
-
-      {renderSection('🛒 Need to Buy', needToBuyItems)}
-      {renderSection('🧺 In Cart', inCartItems)}
+      {renderSection('Need to Buy', '🛒', needToBuyItems, '#ef4444')}
+      {/* Red */}
+      {renderSection('In Cart', '🧺', inCartItems, '#22c55e')} {/* Green */}
     </ScrollView>
   );
 };
@@ -107,52 +129,78 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#f9fafb',
   },
   heading: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     marginBottom: 20,
+    color: '#111827',
+    textAlign: 'center',
   },
   section: {
     marginBottom: 30,
+    borderWidth: 2,
+    borderRadius: 10,
+    padding: 15,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 10,
+    fontWeight: '800',
+    marginBottom: 15,
   },
-  itemRow: {
+  itemCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    borderBottomColor: '#e5e7eb',
+    borderBottomWidth: 1,
   },
-  itemText: {
-    fontSize: 16,
+  itemName: {
+    fontSize: 17,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  itemPrice: {
+    fontSize: 17,
+    color: '#111827',
+    fontWeight: '700',
   },
   totalRow: {
-    marginTop: 10,
-    borderTopWidth: 1,
-    borderColor: '#ccc',
-    paddingTop: 10,
+    marginTop: 15,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    borderTopWidth: 2,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 12,
   },
   totalText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
   },
   emptyText: {
     fontStyle: 'italic',
-    color: '#888',
-    marginTop: 10,
+    color: '#9ca3af',
+    fontSize: 16,
+    textAlign: 'center',
   },
   backButton: {
+    alignSelf: 'flex-start',
     marginBottom: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#3b82f6',
   },
   backButtonText: {
     fontSize: 16,
-    color: '#007bff',
+    color: 'white',
+    fontWeight: '700',
   },
   loadingContainer: {
     flex: 1,

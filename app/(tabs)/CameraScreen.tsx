@@ -10,7 +10,7 @@ import LocationToggle from '../components/CameraScreenComponents/LocationToggle'
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useCameraLogic } from '../components/CameraScreenComponents/useCameraLogic';
 
-import BannerAdComponent from '../components/BannerAdComponent';
+// import BannerAdComponent from '../components/BannerAdComponent';
 export default function CameraScreen() {
   useRequireAuth();
   const {
